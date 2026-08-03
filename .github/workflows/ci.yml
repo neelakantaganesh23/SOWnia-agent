@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r backend/requirements.txt ruff black mypy pytest
+
+      - name: Lint with ruff
+        run: ruff check backend/
+
+      - name: Format check with black
+        run: black --check backend/
+
+      - name: Type check with mypy
+        run: mypy backend/ --ignore-missing-imports
+
+      - name: Run tests
+        run: pytest tests/ -v
+        env:
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}

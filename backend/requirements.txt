@@ -1,0 +1,38 @@
+# Core
+fastapi
+uvicorn[standard]
+python-multipart
+pydantic
+pydantic-settings
+python-dotenv
+httpx
+
+# AI & Agents
+langchain
+langchain-google-genai
+langchain-community
+langgraph
+langsmith
+huggingface_hub
+sentence-transformers
+
+# Document Parsing
+PyMuPDF
+python-docx
+
+# Vector Store
+faiss-cpu
+
+# Output
+weasyprint
+
+# Testing
+pytest
+pytest-asyncio
+
+# Dev tools
+ruff
+black
+mypy
+
+
