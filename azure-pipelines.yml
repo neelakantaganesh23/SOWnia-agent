@@ -48,27 +48,25 @@ stages:
         pool:
           vmImage: 'ubuntu-latest'
         steps:
-          - task: Docker@2
-            displayName: 'Build and Push Backend Image'
+          - task: AzureCLI@2
+            displayName: 'Login to ACR, Build & Push Images'
             inputs:
-              command: 'buildAndPush'
-              repository: $(imageRepositoryBackend)
-              dockerfile: $(dockerfilePathBackend)
-              containerRegistry: '$(azureSubscription)-ACR'
-              tags: |
-                $(tag)
-                latest
-
-          - task: Docker@2
-            displayName: 'Build and Push Frontend Image'
-            inputs:
-              command: 'buildAndPush'
-              repository: $(imageRepositoryFrontend)
-              dockerfile: $(dockerfilePathFrontend)
-              containerRegistry: '$(azureSubscription)-ACR'
-              tags: |
-                $(tag)
-                latest
+              azureSubscription: $(azureSubscription)
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                # Login to ACR
+                az acr login --name $(acrName)
+                
+                # Build & Push Backend
+                docker build -t $(acrName).azurecr.io/$(imageRepositoryBackend):$(tag) -t $(acrName).azurecr.io/$(imageRepositoryBackend):latest ./backend
+                docker push $(acrName).azurecr.io/$(imageRepositoryBackend):$(tag)
+                docker push $(acrName).azurecr.io/$(imageRepositoryBackend):latest
+                
+                # Build & Push Frontend
+                docker build -t $(acrName).azurecr.io/$(imageRepositoryFrontend):$(tag) -t $(acrName).azurecr.io/$(imageRepositoryFrontend):latest ./frontend
+                docker push $(acrName).azurecr.io/$(imageRepositoryFrontend):$(tag)
+                docker push $(acrName).azurecr.io/$(imageRepositoryFrontend):latest
 
   # ─── STAGE 3: Deploy Helm Chart to AKS Cluster ─────────────────────────────
   - stage: Deploy
@@ -81,28 +79,21 @@ stages:
           vmImage: 'ubuntu-latest'
         steps:
           - task: AzureCLI@2
-            displayName: 'Get AKS Credentials'
+            displayName: 'Deploy via Helm to AKS'
             inputs:
               azureSubscription: $(azureSubscription)
               scriptType: 'bash'
               scriptLocation: 'inlineScript'
               inlineScript: |
+                # Get AKS credentials
                 az aks get-credentials --resource-group $(resourceGroup) --name $(aksCluster) --overwrite-existing
-
-          - task: HelmInstaller@1
-            inputs:
-              helmVersionToInstall: 'latest'
-
-          - task: AzureCLI@2
-            displayName: 'Helm Upgrade / Install'
-            inputs:
-              azureSubscription: $(azureSubscription)
-              scriptType: 'bash'
-              scriptLocation: 'inlineScript'
-              inlineScript: |
+                
+                # Upgrade or Install Helm Chart
                 helm upgrade --install sownia ./helm/sownia \
                   --namespace default \
+                  --set backend.image.repository=$(acrName).azurecr.io/$(imageRepositoryBackend) \
                   --set backend.image.tag=$(tag) \
+                  --set frontend.image.repository=$(acrName).azurecr.io/$(imageRepositoryFrontend) \
                   --set frontend.image.tag=$(tag) \
                   --set secrets.googleApiKey="$(GOOGLE_API_KEY)" \
                   --set secrets.hfToken="$(HF_TOKEN)"
