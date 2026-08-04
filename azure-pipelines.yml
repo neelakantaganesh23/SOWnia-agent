@@ -41,9 +41,14 @@ stages:
                   sudo apt-get update && sudo apt-get install -y terraform
                 fi
                 
-                # Explicitly register ContainerService to avoid NoRegisteredProviderFound error
-                az provider register --namespace Microsoft.ContainerService
-                
+                # Providers must be pre-registered ONCE by the subscription owner
+                # (see DEPLOYMENT.md). The service principal often lacks the
+                # subscription-scope rights to register them, so this is best-effort
+                # only and must never fail the build.
+                az provider register --namespace Microsoft.ContainerService || echo "provider register skipped (insufficient rights - expected on free trial)"
+                az provider register --namespace Microsoft.ContainerRegistry || true
+                az provider register --namespace Microsoft.Network || true
+
                 cd terraform
                 # Run terraform init with -upgrade to fetch the new provider version
                 terraform init -input=false -upgrade

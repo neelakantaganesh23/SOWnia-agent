@@ -2,7 +2,7 @@ global:
   environment: production
 
 backend:
-  replicaCount: 2
+  replicaCount: 1
   image:
     repository: acrsowniaaksprod.azurecr.io/sownia-backend
     tag: latest
@@ -19,7 +19,7 @@ backend:
       memory: 512Mi
 
 frontend:
-  replicaCount: 2
+  replicaCount: 1
   image:
     repository: acrsowniaaksprod.azurecr.io/sownia-frontend
     tag: latest

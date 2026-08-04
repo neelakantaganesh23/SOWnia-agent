@@ -30,8 +30,8 @@ variable "aks_dns_prefix" {
 
 variable "node_count" {
   type        = number
-  default     = 2
-  description = "Initial node count for system pool"
+  default     = 1
+  description = "Initial node count for system pool. 1 x Standard_B2s = 2 vCPU, safely under the free-trial 4-vCPU regional quota."
 }
 
 variable "node_vm_size" {
