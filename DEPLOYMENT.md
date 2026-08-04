@@ -40,6 +40,22 @@ az provider show -n Microsoft.ContainerService --query registrationState -o tsv
 # --- (b) Pre-create the resource group (Terraform references it, does not create it) ---
 az group create --name rg-sownia-aks-prod --location eastus
 
+# --- (b2) Create the remote Terraform STATE storage (once). This persists state
+#          across pipeline runs so Terraform stops re-creating existing resources.
+#          Storage account names are GLOBALLY unique + 3-24 lowercase alphanumeric.
+#          If "stsowniatfstate01" is taken, pick another and update the backend
+#          block in terraform/main.tf to match.
+az storage account create \
+  --name stsowniatfstate01 \
+  --resource-group rg-sownia-aks-prod \
+  --location eastus \
+  --sku Standard_LRS \
+  --min-tls-version TLS1_2
+az storage container create \
+  --name tfstate \
+  --account-name stsowniatfstate01 \
+  --auth-mode login
+
 # --- (c) Create the service principal used by the Azure DevOps service connection,
 #         scoped to the whole SUBSCRIPTION as Contributor (fixes the GroupsClient 403) ---
 az ad sp create-for-rbac \
@@ -54,6 +70,26 @@ The last command prints a JSON credential block. **Copy it** — you need it in 
 > If your org policy forbids subscription-scope Contributor, scope it to the RG instead:
 > `--scopes "/subscriptions/$SUB/resourceGroups/rg-sownia-aks-prod"`. The RG and providers
 > are already pre-created in (a)/(b), so RG-scope is enough for the rest of the pipeline.
+
+---
+
+### 1d. Clear the orphaned resources from earlier runs (one-time)
+
+Earlier pipeline runs already created the ACR and AKS, but their state was lost
+(no backend then). Now that remote state exists but is empty, Terraform would say
+`already exists - needs to be imported`. Simplest fix — **delete them** and let the
+next pipeline run recreate them under tracked state:
+
+```bash
+az aks delete --name aks-sownia-prod --resource-group rg-sownia-aks-prod --yes
+az acr delete --name acrsowniaaksprod --resource-group rg-sownia-aks-prod --yes
+```
+
+> **Alternative (keeps the existing cluster):** instead of deleting, import them into
+> the new remote state by running Terraform locally with the ARM_* env vars set:
+> `terraform init` then
+> `terraform import azurerm_container_registry.sownia_acr /subscriptions/<SUB>/resourceGroups/rg-sownia-aks-prod/providers/Microsoft.ContainerRegistry/registries/acrsowniaaksprod`
+> and the same for `azurerm_kubernetes_cluster.sownia_aks`. Delete is easier for a test.
 
 ---
 

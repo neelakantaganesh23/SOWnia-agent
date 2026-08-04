@@ -9,6 +9,19 @@ terraform {
       version = "~> 3.116.0"
     }
   }
+
+  # Remote state in Azure Storage so state PERSISTS across pipeline runs.
+  # Without this, the ephemeral build agent loses state each run and
+  # Terraform re-tries to create resources that already exist ("already
+  # exists - needs to be imported"). The storage account/container are
+  # created ONCE by the owner (see DEPLOYMENT.md §1a). Values must be
+  # literals here; auth comes from the ARM_* env vars set in the pipeline.
+  backend "azurerm" {
+    resource_group_name  = "rg-sownia-aks-prod"
+    storage_account_name = "stsowniatfstate01"
+    container_name       = "tfstate"
+    key                  = "sownia.aks.tfstate"
+  }
 }
 
 provider "azurerm" {

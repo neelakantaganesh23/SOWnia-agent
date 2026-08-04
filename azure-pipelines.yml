@@ -38,7 +38,19 @@ stages:
               azureSubscription: $(azureSubscription)
               scriptType: 'bash'
               scriptLocation: 'inlineScript'
+              # Expose the service-connection SP as env vars so Terraform (both
+              # the provider AND the azurerm remote-state backend) can authenticate.
+              addSpnToEnvironment: true
               inlineScript: |
+                set -e
+
+                # Map the SP credentials exposed by addSpnToEnvironment to the
+                # ARM_* variables Terraform uses for provider + backend auth.
+                export ARM_CLIENT_ID="$servicePrincipalId"
+                export ARM_CLIENT_SECRET="$servicePrincipalKey"
+                export ARM_TENANT_ID="$tenantId"
+                export ARM_SUBSCRIPTION_ID="$(az account show --query id -o tsv)"
+
                 # Ensure terraform binary is installed
                 if ! command -v terraform &> /dev/null; then
                   echo "Installing Terraform..."
@@ -46,7 +58,7 @@ stages:
                   echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
                   sudo apt-get update && sudo apt-get install -y terraform
                 fi
-                
+
                 # Providers must be pre-registered ONCE by the subscription owner
                 # (see DEPLOYMENT.md). The service principal often lacks the
                 # subscription-scope rights to register them, so this is best-effort
@@ -56,7 +68,7 @@ stages:
                 az provider register --namespace Microsoft.Network || true
 
                 cd terraform
-                # Run terraform init with -upgrade to fetch the new provider version
+                # init connects to the azurerm remote backend (Azure Storage)
                 terraform init -input=false -upgrade
                 terraform plan -input=false -out=tfplan
                 terraform apply -input=false -auto-approve tfplan
