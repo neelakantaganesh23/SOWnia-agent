@@ -1,9 +1,15 @@
 name: $(Build.DefinitionName)_$(Date:yyyyMMdd)$(Rev:.r)
 
+# CI trigger: every push to main automatically queues this pipeline.
+# batch:false means each push runs its own build (no batching/skipping).
 trigger:
+  batch: false
   branches:
     include:
       - main
+
+# Do not run on pull requests (only on pushes to main).
+pr: none
 
 variables:
   azureSubscription: 'Azure-DevOps-Service-Connection'

@@ -36,8 +36,8 @@ variable "node_count" {
 
 variable "node_vm_size" {
   type        = string
-  default     = "Standard_B2s"
-  description = "VM size for AKS nodes"
+  default     = "Standard_D2as_v7"
+  description = "VM size for AKS nodes. B-series is not allowed in this subscription; D2as_v7 (2 vCPU, 8 GB) is the smallest allowed SKU and stays within the 4-vCPU quota at 1 node."
 }
 
 variable "tags" {
