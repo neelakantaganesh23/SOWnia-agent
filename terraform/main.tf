@@ -6,9 +6,6 @@ terraform {
       version = "~> 3.90.0"
     }
   }
-  backend "azurerm" {
-    # Configure Azure Blob Storage backend for Terraform state in production
-  }
 }
 
 provider "azurerm" {

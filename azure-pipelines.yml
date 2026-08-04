@@ -42,9 +42,9 @@ stages:
                 fi
                 
                 cd terraform
-                terraform init
-                terraform plan -out=tfplan
-                terraform apply -auto-approve tfplan
+                terraform init -input=false
+                terraform plan -input=false -out=tfplan
+                terraform apply -input=false -auto-approve tfplan
 
   # ─── STAGE 2: Build & Push Docker Images to ACR ────────────────────────────
   - stage: Build
