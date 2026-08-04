@@ -26,12 +26,8 @@ stages:
         pool:
           vmImage: 'ubuntu-latest'
         steps:
-          - task: HashiCorp.terraform-installer.custom-terraform-installer-build-task.TerraformInstaller@1
-            inputs:
-              terraformVersion: 'latest'
-
           - task: AzureCLI@2
-            displayName: 'Terraform Init & Apply'
+            displayName: 'Terraform Init, Plan & Apply'
             inputs:
               azureSubscription: $(azureSubscription)
               scriptType: 'bash'
