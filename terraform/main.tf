@@ -13,26 +13,21 @@ provider "azurerm" {
   features {}
 }
 
-# 1. Resource Group (Pre-created in Azure Portal)
-data "azurerm_resource_group" "sownia_rg" {
-  name = var.resource_group_name
-}
-
-# 2. Azure Container Registry (ACR)
+# 1. Azure Container Registry (ACR)
 resource "azurerm_container_registry" "sownia_acr" {
   name                = var.acr_name
-  resource_group_name = data.azurerm_resource_group.sownia_rg.name
-  location            = data.azurerm_resource_group.sownia_rg.location
+  resource_group_name = var.resource_group_name
+  location            = var.location
   sku                 = "Standard"
   admin_enabled       = true
   tags                = var.tags
 }
 
-# 3. Azure Kubernetes Service (AKS) Cluster
+# 2. Azure Kubernetes Service (AKS) Cluster
 resource "azurerm_kubernetes_cluster" "sownia_aks" {
   name                = var.aks_cluster_name
-  location            = data.azurerm_resource_group.sownia_rg.location
-  resource_group_name = data.azurerm_resource_group.sownia_rg.name
+  location            = var.location
+  resource_group_name = var.resource_group_name
   dns_prefix          = var.aks_dns_prefix
   tags                = var.tags
 
