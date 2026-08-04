@@ -1,5 +1,5 @@
 output "resource_group_name" {
-  value = azurerm_resource_group.sownia_rg.name
+  value = data.azurerm_resource_group.sownia_rg.name
 }
 
 output "acr_login_server" {
