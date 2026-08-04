@@ -26,7 +26,7 @@ stages:
         pool:
           vmImage: 'ubuntu-latest'
         steps:
-          - task: AzureCLI@2
+          - task: AzureCLI@1
             displayName: 'Terraform Init, Plan & Apply'
             inputs:
               azureSubscription: $(azureSubscription)
@@ -48,7 +48,7 @@ stages:
         pool:
           vmImage: 'ubuntu-latest'
         steps:
-          - task: AzureCLI@2
+          - task: AzureCLI@1
             displayName: 'Login to ACR, Build & Push Images'
             inputs:
               azureSubscription: $(azureSubscription)
@@ -78,7 +78,7 @@ stages:
         pool:
           vmImage: 'ubuntu-latest'
         steps:
-          - task: AzureCLI@2
+          - task: AzureCLI@1
             displayName: 'Deploy via Helm to AKS'
             inputs:
               azureSubscription: $(azureSubscription)
