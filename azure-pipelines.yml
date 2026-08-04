@@ -41,8 +41,12 @@ stages:
                   sudo apt-get update && sudo apt-get install -y terraform
                 fi
                 
+                # Explicitly register ContainerService to avoid NoRegisteredProviderFound error
+                az provider register --namespace Microsoft.ContainerService
+                
                 cd terraform
-                terraform init -input=false
+                # Run terraform init with -upgrade to fetch the new provider version
+                terraform init -input=false -upgrade
                 terraform plan -input=false -out=tfplan
                 terraform apply -input=false -auto-approve tfplan
 
