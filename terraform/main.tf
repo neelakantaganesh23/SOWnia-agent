@@ -55,6 +55,11 @@ resource "azurerm_kubernetes_cluster" "sownia_aks" {
   # Free control-plane tier — no cost for the managed Kubernetes API server.
   sku_tier = "Free"
 
+  # The live cluster has the OIDC issuer enabled (Azure default / cannot be
+  # disabled once on). Declare it so Terraform doesn't try to turn it off,
+  # which Azure rejects with OIDCIssuerFeatureCannotBeDisabled.
+  oidc_issuer_enabled = true
+
   default_node_pool {
     name            = "systempool"
     node_count      = var.node_count
