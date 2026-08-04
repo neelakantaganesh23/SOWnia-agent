@@ -71,6 +71,18 @@ The last command prints a JSON credential block. **Copy it** — you need it in 
 > `--scopes "/subscriptions/$SUB/resourceGroups/rg-sownia-aks-prod"`. The RG and providers
 > are already pre-created in (a)/(b), so RG-scope is enough for the rest of the pipeline.
 
+```bash
+# --- (c2) Terraform creates an AcrPull ROLE ASSIGNMENT (so AKS can pull from ACR).
+#          Creating role assignments needs more than Contributor, so also grant the
+#          SP "User Access Administrator". Get the SP object id first: ---
+SP_OID=$(az ad sp list --display-name "sp-sownia-devops" --query "[0].id" -o tsv)
+az role assignment create \
+  --assignee-object-id "$SP_OID" \
+  --assignee-principal-type ServicePrincipal \
+  --role "User Access Administrator" \
+  --scope "/subscriptions/$SUB/resourceGroups/rg-sownia-aks-prod"
+```
+
 ---
 
 ### 1d. Clear the orphaned resources from earlier runs (one-time)
@@ -177,4 +189,5 @@ az group delete --name rg-sownia-aks-prod --yes --no-wait
 | `Registering ... 403` during `terraform apply` | SP can't register providers (needs subscription scope) | Step 1(a): owner pre-registers; `skip_provider_registration = true` already set |
 | `GroupsClient ... 403` | SP can't do subscription-level RG lookup | RG is pre-created (1b) and referenced directly by `var.resource_group_name` |
 | `AuthorizationFailed` on create | SP lacks Contributor on the target scope | Step 1(c): grant Contributor at subscription (or RG) scope |
+| `AuthorizationFailed` on `roleAssignments/write` | Contributor can't grant roles | Step 1(c2): grant the SP "User Access Administrator" |
 | Node pool fails: quota exceeded | >4 vCPU on free trial | Already fixed: 1 × Standard_B2s |
