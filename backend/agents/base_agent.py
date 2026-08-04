@@ -139,10 +139,12 @@ You MUST respond with **exactly one** valid JSON object that conforms to the sch
    - `"confidence"` (number) — a float between 0.0 and 1.0
    - `"page_reference"` (string or null) — the page/section reference, or null
    - `"recommendation"` (string) — a specific, actionable recommendation
+   - `"source_text"` (string or null) — the EXACT verbatim quote from the SOW that this finding refers to. Copy the problematic clause, term, or policy word-for-word from the document. This is critical for traceability.
 4. Do NOT wrap the JSON in ```json``` code blocks.
 5. Do NOT include any text before or after the JSON object.
 6. If you find no issues, return: {{"findings": []}}
 7. Focus on real, actionable findings. Do NOT generate generic advice.
+8. For `source_text`, copy the EXACT words from the SOW — do not paraphrase or summarize.
 
 ### Example (for format reference only)
 {{
@@ -152,14 +154,16 @@ You MUST respond with **exactly one** valid JSON object that conforms to the sch
       "risk_level": "HIGH",
       "confidence": 0.92,
       "page_reference": "Page 5, Section 7.3",
-      "recommendation": "Add a mutual liability cap equal to the total contract value, with carve-outs for IP infringement and data breaches."
+      "recommendation": "Add a mutual liability cap equal to the total contract value, with carve-outs for IP infringement and data breaches.",
+      "source_text": "The Vendor shall indemnify and hold harmless the Client against all claims, damages, and liabilities arising from the Vendor's performance under this Agreement."
     }},
     {{
       "finding": "Payment milestones are not tied to specific deliverable acceptance criteria.",
       "risk_level": "MEDIUM",
       "confidence": 0.78,
       "page_reference": "Page 3, Section 4.1",
-      "recommendation": "Link each payment milestone to a named deliverable with explicit acceptance criteria and sign-off process."
+      "recommendation": "Link each payment milestone to a named deliverable with explicit acceptance criteria and sign-off process.",
+      "source_text": "Payments shall be made upon completion of each project phase as determined by the Project Manager."
     }}
   ]
 }}
@@ -230,6 +234,7 @@ Now analyse the SOW and return your JSON response."""
                     "recommendation": str(
                         item.get("recommendation", "Review this finding manually.")
                     ),
+                    "source_text": item.get("source_text"),
                 }
                 findings.append(finding)
 
@@ -282,6 +287,7 @@ Now analyse the SOW and return your JSON response."""
                 "confidence": item.confidence,
                 "page_reference": item.page_reference,
                 "recommendation": item.recommendation,
+                "source_text": item.source_text,
             }
             for item in items
         ]
@@ -318,6 +324,7 @@ Now analyse the SOW and return your JSON response."""
                 "confidence": 0.3,
                 "page_reference": None,
                 "recommendation": "Review the raw agent output manually for detailed findings.",
+                "source_text": None,
             }
         ]
 
@@ -384,6 +391,7 @@ Now analyse the SOW and return your JSON response."""
                             "confidence": 1.0,
                             "page_reference": None,
                             "recommendation": "Ensure the SOW document is uploaded and parsed correctly.",
+                            "source_text": None,
                         }
                     ]
                 }
@@ -414,6 +422,7 @@ Now analyse the SOW and return your JSON response."""
                         "confidence": 0.1,
                         "page_reference": None,
                         "recommendation": "Retry the review or check agent configuration.",
+                        "source_text": None,
                     }
                 ]
             }

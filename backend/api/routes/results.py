@@ -1,10 +1,11 @@
 """Results routes — GET/DELETE endpoints for review results.
 
 Provides endpoints to:
-- GET /results/{review_id}     — Fetch full review results as JSON
-- GET /results/{review_id}/pdf — Download PDF report
-- GET /reviews                 — List all past reviews
-- DELETE /reviews/{review_id}  — Delete a review record
+- GET /results/{review_id}                — Fetch full review results as JSON
+- GET /results/{review_id}/pdf            — Download PDF report
+- GET /results/{review_id}/annotated-pdf  — Download original PDF with highlighted findings
+- GET /reviews                            — List all past reviews
+- DELETE /reviews/{review_id}             — Delete a review record
 """
 
 import io
@@ -132,6 +133,124 @@ async def get_pdf_report(review_id: str):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"PDF report generation failed: {str(e)}",
+        )
+
+
+@router.get(
+    "/results/{review_id}/annotated-pdf",
+    summary="Download annotated PDF with highlighted findings",
+)
+async def get_annotated_pdf(review_id: str):
+    """Download the original uploaded PDF with findings highlighted.
+
+    Uses PyMuPDF to search for each finding's source_text in the
+    original PDF, highlight it with a risk-level colour, and attach
+    pop-up annotation comments with the finding details.
+
+    Args:
+        review_id: UUID of the review.
+
+    Returns:
+        StreamingResponse with the annotated PDF file.
+
+    Raises:
+        HTTPException: If review is not found, not complete, or
+                       the original file is not a PDF.
+    """
+    # Get review data
+    review_data = None
+    if review_id in review_results:
+        review_data = review_results[review_id]
+    else:
+        try:
+            from backend.storage.hf_storage import hf_storage
+            review_data = hf_storage.get_review(review_id)
+        except Exception:
+            pass
+
+    if not review_data:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Review with ID '{review_id}' not found.",
+        )
+
+    if review_data.get("status") != "complete":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Review is not yet complete. "
+            f"Current status: {review_data.get('status')}.",
+        )
+
+    # Get the original file bytes
+    file_id = review_data.get("file_id")
+    if not file_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No file_id associated with this review.",
+        )
+
+    from backend.api.routes.upload import uploaded_files
+    file_data = uploaded_files.get(file_id)
+    if not file_data:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Original uploaded file not found in memory. "
+            "Re-upload and re-review the document.",
+        )
+
+    file_bytes = file_data.get("file_bytes")
+    if not file_bytes:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Original file bytes not available for annotation.",
+        )
+
+    content_type = file_data.get("content_type", "")
+    if content_type != "application/pdf":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Annotated PDF is only available for PDF uploads. "
+            "DOCX files are not supported for annotation.",
+        )
+
+    # Gather all findings across all agents
+    all_findings = []
+    agents = review_data.get("agents", {})
+    for domain, agent_data in agents.items():
+        if isinstance(agent_data, dict):
+            for finding in agent_data.get("findings", []):
+                all_findings.append(finding)
+
+    if not all_findings:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No findings to annotate.",
+        )
+
+    # Annotate the PDF
+    try:
+        from backend.utils.pdf_annotator import PDFAnnotator
+        annotated_bytes = PDFAnnotator.annotate(file_bytes, all_findings)
+
+        original_name = file_data.get("filename", "document")
+        # Strip extension and add _annotated
+        if original_name.lower().endswith(".pdf"):
+            annotated_name = original_name[:-4] + "_annotated.pdf"
+        else:
+            annotated_name = original_name + "_annotated.pdf"
+
+        return StreamingResponse(
+            io.BytesIO(annotated_bytes),
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f"attachment; filename={annotated_name}"
+            },
+        )
+    except Exception as e:
+        logger.error(f"PDF annotation failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"PDF annotation failed: {str(e)}",
         )
 
 

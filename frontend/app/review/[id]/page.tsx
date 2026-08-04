@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { useReviewStore } from "@/store/reviewStore";
-import { getResults, downloadPdfReport } from "@/lib/api";
+import { getResults, downloadPdfReport, downloadAnnotatedPdf } from "@/lib/api";
 import {
   FullReviewResult,
   DOMAIN_LABELS,
@@ -22,6 +22,7 @@ export default function ReviewResultsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isDownloadingAnnotated, setIsDownloadingAnnotated] = useState(false);
 
   // Poll for results
   useEffect(() => {
@@ -91,6 +92,25 @@ export default function ReviewResultsPage() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  };
+
+  const handleDownloadAnnotatedPdf = async () => {
+    setIsDownloadingAnnotated(true);
+    try {
+      const blob = await downloadAnnotatedPdf(reviewId);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${review?.filename?.replace(/\.pdf$/i, "") || "document"}_annotated.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || "Failed to download annotated PDF. This feature is only available for PDF uploads.");
+    } finally {
+      setIsDownloadingAnnotated(false);
+    }
   };
 
   // Loading skeleton
@@ -226,7 +246,7 @@ export default function ReviewResultsPage() {
             <button
               onClick={handleDownloadPdf}
               disabled={isDownloading}
-              className="btn-primary"
+              className="btn-secondary"
               id="download-pdf-btn"
             >
               {isDownloading ? (
@@ -247,6 +267,32 @@ export default function ReviewResultsPage() {
                 </svg>
               )}
               PDF Report
+            </button>
+            <button
+              onClick={handleDownloadAnnotatedPdf}
+              disabled={isDownloadingAnnotated}
+              className="btn-primary"
+              id="download-annotated-pdf-btn"
+              title="Download original PDF with highlighted findings"
+            >
+              {isDownloadingAnnotated ? (
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={2}
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M9.53 16.122a3 3 0 00-5.78 1.128 2.25 2.25 0 01-2.4 2.245 4.5 4.5 0 008.4-2.245c0-.399-.078-.78-.22-1.128zm0 0a15.998 15.998 0 003.388-1.62m-5.043-.025a15.994 15.994 0 011.622-3.395m3.42 3.42a15.995 15.995 0 004.764-4.648l3.876-5.814a1.151 1.151 0 00-1.597-1.597L14.146 6.32a15.996 15.996 0 00-4.649 4.763m3.42 3.42a6.776 6.776 0 00-3.42-3.42"
+                  />
+                </svg>
+              )}
+              Annotated PDF
             </button>
           </div>
         </div>

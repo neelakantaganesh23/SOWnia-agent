@@ -37,6 +37,7 @@ export interface Finding {
   confidence: number;
   page_reference: string | null;
   recommendation: string;
+  source_text?: string | null;
   agent?: string;
   domain?: string;
 }

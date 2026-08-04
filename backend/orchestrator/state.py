@@ -20,6 +20,7 @@ class AgentFinding(TypedDict):
     confidence: float  # 0.0 to 1.0
     page_reference: Optional[str]
     recommendation: str
+    source_text: Optional[str]  # Verbatim quote from SOW for traceability
 
 
 class SOWReviewState(TypedDict):

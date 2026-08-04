@@ -47,6 +47,14 @@ class FindingItem(BaseModel):
         min_length=1,
         description="A specific, actionable recommendation to address this finding.",
     )
+    source_text: Optional[str] = Field(
+        None,
+        description=(
+            "The exact verbatim quote from the SOW document that this finding "
+            "refers to. Copy the problematic clause, term, or statement word-for-word. "
+            "This is used to highlight the text in the original document."
+        ),
+    )
 
     # ── Validators ───────────────────────────────────────────────────────
 

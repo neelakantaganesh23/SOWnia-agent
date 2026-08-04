@@ -77,6 +77,24 @@ export default function FindingsList({ findings }: FindingsListProps) {
                 </div>
               )}
 
+              {/* Source text quote */}
+              {finding.source_text && (
+                <div className="mt-3 mb-3 p-3 rounded-lg bg-yellow-500/5 border border-yellow-500/15 relative">
+                  <div className="flex items-center gap-1.5 mb-1.5">
+                    <svg className="w-3.5 h-3.5 text-yellow-500/70" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 6h.008v.008H6V6z" />
+                    </svg>
+                    <span className="text-xs font-medium text-yellow-500/70">
+                      Source Text (from document)
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-300 leading-relaxed italic border-l-2 border-yellow-500/30 pl-3">
+                    &ldquo;{finding.source_text}&rdquo;
+                  </p>
+                </div>
+              )}
+
               {/* Confidence */}
               <div className="flex items-center gap-2 mb-3">
                 <span className="text-xs text-gray-500">Confidence:</span>

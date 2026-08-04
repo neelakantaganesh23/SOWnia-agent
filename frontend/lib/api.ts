@@ -115,6 +115,16 @@ export async function downloadPdfReport(reviewId: string): Promise<Blob> {
 }
 
 /**
+ * Download annotated PDF with highlighted findings.
+ */
+export async function downloadAnnotatedPdf(reviewId: string): Promise<Blob> {
+  const response = await apiClient.get(`/results/${reviewId}/annotated-pdf`, {
+    responseType: "blob",
+  });
+  return response.data;
+}
+
+/**
  * List all past reviews with optional filtering.
  */
 export async function listReviews(params?: {

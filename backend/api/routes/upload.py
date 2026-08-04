@@ -123,6 +123,7 @@ async def upload_file_endpoint(
         "filename": filename,
         "content_type": content_type,
         "text": extracted_text,
+        "file_bytes": file_bytes,  # Stored for PDF annotation
         "file_size": len(file_bytes),
         "page_count": page_count,
     }
