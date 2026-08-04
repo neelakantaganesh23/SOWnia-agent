@@ -1,0 +1,46 @@
+name: Deploy to Azure Container Apps
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to Azure
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Log in to Azure Container Registry
+        run: |
+          az acr login --name ${{ secrets.AZURE_ACR_NAME }}
+
+      - name: Build and push Backend Docker Image
+        run: |
+          docker build -t ${{ secrets.AZURE_ACR_NAME }}.azurecr.io/sownia-backend:${{ github.sha }} -t ${{ secrets.AZURE_ACR_NAME }}.azurecr.io/sownia-backend:latest ./backend
+          docker push ${{ secrets.AZURE_ACR_NAME }}.azurecr.io/sownia-backend:${{ github.sha }}
+          docker push ${{ secrets.AZURE_ACR_NAME }}.azurecr.io/sownia-backend:latest
+
+      - name: Build and push Frontend Docker Image
+        run: |
+          docker build -t ${{ secrets.AZURE_ACR_NAME }}.azurecr.io/sownia-frontend:${{ github.sha }} -t ${{ secrets.AZURE_ACR_NAME }}.azurecr.io/sownia-frontend:latest ./frontend
+          docker push ${{ secrets.AZURE_ACR_NAME }}.azurecr.io/sownia-frontend:${{ github.sha }}
+          docker push ${{ secrets.AZURE_ACR_NAME }}.azurecr.io/sownia-frontend:latest
+
+      - name: Deploy Backend Container App
+        uses: azure/container-apps-deploy-action@v1
+        with:
+          resourceGroup: ${{ secrets.AZURE_RESOURCE_GROUP }}
+          containerAppName: app-sownia-backend
+          imageToDeploy: ${{ secrets.AZURE_ACR_NAME }}.azurecr.io/sownia-backend:${{ github.sha }}
+
+      - name: Deploy Frontend Container App
+        uses: azure/container-apps-deploy-action@v1
+        with:
+          resourceGroup: ${{ secrets.AZURE_RESOURCE_GROUP }}
+          containerAppName: app-sownia-frontend
+          imageToDeploy: ${{ secrets.AZURE_ACR_NAME }}.azurecr.io/sownia-frontend:${{ github.sha }}

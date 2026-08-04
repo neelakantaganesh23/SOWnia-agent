@@ -1,0 +1,112 @@
+name: $(Build.DefinitionName)_$(Date:yyyyMMdd)$(Rev:.r)
+
+trigger:
+  branches:
+    include:
+      - main
+
+variables:
+  azureSubscription: 'Azure-DevOps-Service-Connection'
+  resourceGroup: 'rg-sownia-aks-prod'
+  acrName: 'acrsowniaaksprod'
+  aksCluster: 'aks-sownia-prod'
+  imageRepositoryBackend: 'sownia-backend'
+  imageRepositoryFrontend: 'sownia-frontend'
+  dockerfilePathBackend: '$(Build.SourcesDirectory)/backend/Dockerfile'
+  dockerfilePathFrontend: '$(Build.SourcesDirectory)/frontend/Dockerfile'
+  tag: '$(Build.BuildId)'
+
+stages:
+  # ─── STAGE 1: Infrastructure Provisioning (Terraform) ─────────────────────
+  - stage: Terraform
+    displayName: '1. Provision AKS Infrastructure'
+    jobs:
+      - job: TerraformApply
+        displayName: 'Terraform Plan & Apply'
+        pool:
+          vmImage: 'ubuntu-latest'
+        steps:
+          - task: HashiCorp.terraform-installer.custom-terraform-installer-build-task.TerraformInstaller@1
+            inputs:
+              terraformVersion: 'latest'
+
+          - task: AzureCLI@2
+            displayName: 'Terraform Init & Apply'
+            inputs:
+              azureSubscription: $(azureSubscription)
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                cd terraform
+                terraform init
+                terraform plan -out=tfplan
+                terraform apply -auto-approve tfplan
+
+  # ─── STAGE 2: Build & Push Docker Images to ACR ────────────────────────────
+  - stage: Build
+    displayName: '2. Build & Push Docker Images'
+    dependsOn: Terraform
+    jobs:
+      - job: BuildAndPush
+        displayName: 'Docker Build & Push'
+        pool:
+          vmImage: 'ubuntu-latest'
+        steps:
+          - task: Docker@2
+            displayName: 'Build and Push Backend Image'
+            inputs:
+              command: 'buildAndPush'
+              repository: $(imageRepositoryBackend)
+              dockerfile: $(dockerfilePathBackend)
+              containerRegistry: '$(azureSubscription)-ACR'
+              tags: |
+                $(tag)
+                latest
+
+          - task: Docker@2
+            displayName: 'Build and Push Frontend Image'
+            inputs:
+              command: 'buildAndPush'
+              repository: $(imageRepositoryFrontend)
+              dockerfile: $(dockerfilePathFrontend)
+              containerRegistry: '$(azureSubscription)-ACR'
+              tags: |
+                $(tag)
+                latest
+
+  # ─── STAGE 3: Deploy Helm Chart to AKS Cluster ─────────────────────────────
+  - stage: Deploy
+    displayName: '3. Deploy Helm Chart to AKS'
+    dependsOn: Build
+    jobs:
+      - job: HelmDeploy
+        displayName: 'Deploy Unified Helm Release'
+        pool:
+          vmImage: 'ubuntu-latest'
+        steps:
+          - task: AzureCLI@2
+            displayName: 'Get AKS Credentials'
+            inputs:
+              azureSubscription: $(azureSubscription)
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                az aks get-credentials --resource-group $(resourceGroup) --name $(aksCluster) --overwrite-existing
+
+          - task: HelmInstaller@1
+            inputs:
+              helmVersionToInstall: 'latest'
+
+          - task: AzureCLI@2
+            displayName: 'Helm Upgrade / Install'
+            inputs:
+              azureSubscription: $(azureSubscription)
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                helm upgrade --install sownia ./helm/sownia \
+                  --namespace default \
+                  --set backend.image.tag=$(tag) \
+                  --set frontend.image.tag=$(tag) \
+                  --set secrets.googleApiKey="$(GOOGLE_API_KEY)" \
+                  --set secrets.hfToken="$(HF_TOKEN)"

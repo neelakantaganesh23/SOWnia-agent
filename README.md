@@ -119,11 +119,27 @@ black --check backend/
 mypy backend/ --ignore-missing-imports
 ```
 
-## 🚢 Deployment
+## 🚢 Deployment Options
 
-- **Backend**: Hugging Face Spaces (Docker SDK) — auto-deployed via GitHub Actions
-- **Frontend**: Vercel — auto-deployed on push to main
-- **Storage**: Hugging Face Datasets Hub
+### Option A: Azure Container Apps & ACR (Recommended Production Deployment)
+
+SOWnia is packaged as production Docker containers for deployment on **Azure Container Apps (ACA)** with **Azure Container Registry (ACR)**.
+
+1. **Local Multi-Container Test**:
+   ```bash
+   docker-compose -f docker-compose.prod.yml up --build
+   ```
+
+2. **Azure Deployment Workflow**:
+   - Push code to GitHub repository.
+   - Configure GitHub Secrets: `AZURE_CREDENTIALS`, `AZURE_ACR_NAME`, `AZURE_RESOURCE_GROUP`.
+   - GitHub Actions workflow `.github/workflows/azure-deploy.yml` builds and deploys updated backend and frontend containers automatically.
+
+### Option B: Local Docker Setup
+
+```bash
+docker-compose up --build
+```
 
 ## 📄 License
 
