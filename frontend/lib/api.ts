@@ -14,9 +14,12 @@ import {
   ApiError,
 } from "./types";
 
-// API base URL from environment variable
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+// API base URL. Default to "" so browser calls are SAME-ORIGIN relative
+// paths (e.g. /api/v1/upload). next.config.js rewrites /api/* and /health
+// server-side to the in-cluster backend, so the browser never needs to
+// resolve the backend host directly. (NEXT_PUBLIC_* is baked at build time;
+// hardcoding the cluster host here would break browser requests.)
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
 // Create Axios instance with defaults
 const apiClient: AxiosInstance = axios.create({
