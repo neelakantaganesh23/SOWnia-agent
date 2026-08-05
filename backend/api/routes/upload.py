@@ -6,16 +6,20 @@ Accepts PDF or DOCX file uploads with validation:
 - Magic bytes verification
 - Text extraction
 
-Returns file_id UUID for subsequent review requests.
+Persists the file to the database (scoped to the authenticated user) and
+returns file_id UUID for subsequent review requests.
 """
 
 import logging
-import uuid
-from typing import Dict
 
-from fastapi import APIRouter, HTTPException, UploadFile, File, status
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
+from sqlalchemy.orm import Session
 
+from backend.auth.dependencies import get_current_user
 from backend.config import settings
+from backend.db.session import get_db
+from backend.models.uploaded_file import UploadedFile
+from backend.models.user import User
 from backend.parsers.pdf_parser import PDFParser
 from backend.parsers.docx_parser import DOCXParser
 from backend.schemas.review import UploadResponse
@@ -23,10 +27,6 @@ from backend.schemas.review import UploadResponse
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
-
-# In-memory store for uploaded file data (keyed by file_id)
-# In production, use Redis or a persistent store
-uploaded_files: Dict[str, Dict] = {}
 
 # Allowed MIME types
 ALLOWED_MIME_TYPES = {
@@ -43,17 +43,14 @@ ALLOWED_MIME_TYPES = {
 )
 async def upload_file_endpoint(
     file: UploadFile = File(..., description="SOW document (PDF or DOCX)"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ) -> UploadResponse:
     """Upload a SOW document for review.
 
     Validates the file type, size, and magic bytes, then extracts
-    the text content for subsequent review processing.
-
-    Args:
-        file: Uploaded file (PDF or DOCX).
-
-    Returns:
-        UploadResponse with file_id and extracted text metadata.
+    the text content and persists it to the database, owned by the
+    authenticated user.
 
     Raises:
         HTTPException: If file validation fails.
@@ -117,24 +114,26 @@ async def upload_file_endpoint(
             "The file may be scanned/image-based or empty.",
         )
 
-    # Store file data in memory
-    file_id = str(uuid.uuid4())
-    uploaded_files[file_id] = {
-        "filename": filename,
-        "content_type": content_type,
-        "text": extracted_text,
-        "file_bytes": file_bytes,  # Stored for PDF annotation
-        "file_size": len(file_bytes),
-        "page_count": page_count,
-    }
+    uploaded_file = UploadedFile(
+        user_id=current_user.id,
+        filename=filename,
+        content_type=content_type,
+        text=extracted_text,
+        file_bytes=file_bytes,
+        file_size=len(file_bytes),
+        page_count=page_count,
+    )
+    db.add(uploaded_file)
+    db.commit()
+    db.refresh(uploaded_file)
 
     logger.info(
-        f"File uploaded: '{filename}' (ID: {file_id}, "
+        f"File uploaded: '{filename}' (ID: {uploaded_file.id}, user: {current_user.id}, "
         f"{len(extracted_text)} chars extracted)."
     )
 
     return UploadResponse(
-        file_id=file_id,
+        file_id=str(uploaded_file.id),
         filename=filename,
         file_size=len(file_bytes),
         content_type=content_type,
