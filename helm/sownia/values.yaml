@@ -25,7 +25,11 @@ frontend:
     tag: latest
     pullPolicy: Always
   service:
-    type: ClusterIP
+    # LoadBalancer gives the frontend a public IP so it is reachable from a
+    # browser (port-forward only works when kubectl runs on the same machine
+    # as the browser, which is not the case when using Azure Cloud Shell).
+    # The backend stays ClusterIP (private) — the frontend proxies /api to it.
+    type: LoadBalancer
     port: 3000
   resources:
     limits:
