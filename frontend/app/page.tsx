@@ -1,3 +1,4 @@
+import { Zap, Target, BarChart3 } from "lucide-react";
 import FileUploadZone from "@/components/upload/FileUploadZone";
 
 export default function HomePage() {
@@ -33,28 +34,28 @@ export default function HomePage() {
       <div className="mt-20 max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6">
         {[
           {
-            icon: "⚡",
+            Icon: Zap,
             title: "5 AI Agents",
             desc: "Legal, Financial, Technical, Risk, and Delivery review agents work in parallel.",
           },
           {
-            icon: "🎯",
+            Icon: Target,
             title: "Structured Findings",
             desc: "Each finding includes risk level, confidence score, page reference, and actionable recommendations.",
           },
           {
-            icon: "📊",
+            Icon: BarChart3,
             title: "Risk Scoring",
             desc: "Weighted overall risk score with executive summary and downloadable PDF report.",
           },
-        ].map((feature, i) => (
+        ].map(({ Icon, title, desc }, i) => (
           <div
             key={i}
             className="glass-card p-6 text-center hover:scale-[1.02] transition-transform duration-200"
           >
-            <div className="text-3xl mb-3">{feature.icon}</div>
-            <h3 className="font-semibold text-gray-200 mb-1.5">{feature.title}</h3>
-            <p className="text-sm text-gray-500 leading-relaxed">{feature.desc}</p>
+            <Icon className="w-8 h-8 mx-auto mb-3 text-accent" strokeWidth={1.75} />
+            <h3 className="font-semibold text-gray-200 mb-1.5">{title}</h3>
+            <p className="text-sm text-gray-500 leading-relaxed">{desc}</p>
           </div>
         ))}
       </div>

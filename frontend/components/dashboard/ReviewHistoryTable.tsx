@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { FileText, ClipboardList } from "lucide-react";
 import { ReviewListItem, RiskLevel } from "@/lib/types";
 import RiskBadge from "@/components/review/RiskBadge";
 
@@ -84,7 +85,7 @@ export default function ReviewHistoryTable({
   if (reviews.length === 0) {
     return (
       <div className="glass-card p-12 text-center">
-        <div className="text-5xl mb-4">📋</div>
+        <ClipboardList className="w-12 h-12 mx-auto mb-4 text-gray-600" strokeWidth={1.5} />
         <h3 className="text-lg font-semibold text-gray-300 mb-2">
           No reviews yet
         </h3>
@@ -145,8 +146,9 @@ export default function ReviewHistoryTable({
                 id={`review-row-${review.review_id.slice(0, 8)}`}
               >
                 <td className="px-6 py-4">
-                  <span className="text-sm font-medium text-gray-300 group-hover:text-brand-400 transition-colors">
-                    📄 {review.filename}
+                  <span className="text-sm font-medium text-gray-300 group-hover:text-brand-400 transition-colors inline-flex items-center gap-1.5">
+                    <FileText className="w-4 h-4 text-gray-500" strokeWidth={1.75} />
+                    {review.filename}
                   </span>
                 </td>
                 <td className="px-6 py-4">

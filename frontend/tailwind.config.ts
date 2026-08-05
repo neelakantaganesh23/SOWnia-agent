@@ -23,10 +23,12 @@ const config: Config = {
           900: "#371d8a",
           950: "#1f0c5e",
         },
+        // Vivid design-handoff risk palette (see
+        // "Redesigning SOWnia into classical editorial/design_handoff_sownia_vivid/README.md")
         risk: {
-          high: "#ef4444",
-          medium: "#f59e0b",
-          low: "#22c55e",
+          high: "#FB4E6D",
+          medium: "#FBBF24",
+          low: "#34D399",
         },
         surface: {
           50: "#f8f9fc",
@@ -35,11 +37,17 @@ const config: Config = {
           700: "#2a2d3a",
           800: "#1e2030",
           900: "#151725",
-          950: "#0d0f1a",
+          950: "#0a0a11",
         },
+        ink: "#f4f5fb",
+        accent: "#C084FC",
       },
       fontFamily: {
-        sans: ["Inter", "system-ui", "sans-serif"],
+        sans: ["var(--font-inter)", "system-ui", "sans-serif"],
+        display: ["var(--font-plus-jakarta)", "var(--font-inter)", "system-ui", "sans-serif"],
+      },
+      maxWidth: {
+        page: "1180px",
       },
       animation: {
         "fade-in": "fadeIn 0.5s ease-out",
@@ -65,6 +73,8 @@ const config: Config = {
         "gradient-radial": "radial-gradient(var(--tw-gradient-stops))",
         shimmer:
           "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.05) 50%, transparent 100%)",
+        vivid:
+          "linear-gradient(120deg,#38BDF8 0%,#A855F7 34%,#EC4899 66%,#FB923C 100%)",
       },
     },
   },

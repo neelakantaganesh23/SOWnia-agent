@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useReviewStore } from "@/store/reviewStore";
-import { RiskLevel } from "@/lib/types";
+import { RiskLevel, RISK_COLORS } from "@/lib/types";
+import { ClipboardList, Search, BarChart3, AlertTriangle } from "lucide-react";
 import ReviewHistoryTable from "@/components/dashboard/ReviewHistoryTable";
 import {
   BarChart,
@@ -29,17 +30,17 @@ export default function DashboardPage() {
     {
       level: "HIGH",
       count: reviewList.filter((r) => r.overall_risk_level === "HIGH").length,
-      color: "#ef4444",
+      color: RISK_COLORS.HIGH,
     },
     {
       level: "MEDIUM",
       count: reviewList.filter((r) => r.overall_risk_level === "MEDIUM").length,
-      color: "#f59e0b",
+      color: RISK_COLORS.MEDIUM,
     },
     {
       level: "LOW",
       count: reviewList.filter((r) => r.overall_risk_level === "LOW").length,
-      color: "#22c55e",
+      color: RISK_COLORS.LOW,
     },
   ];
 
@@ -73,25 +74,25 @@ export default function DashboardPage() {
           {
             label: "Total Reviews",
             value: totalReviews,
-            icon: "📋",
+            Icon: ClipboardList,
             accent: "from-brand-500/10 to-purple-500/10",
           },
           {
             label: "Total Findings",
             value: totalFindings,
-            icon: "🔍",
+            Icon: Search,
             accent: "from-blue-500/10 to-cyan-500/10",
           },
           {
             label: "Avg Risk Score",
             value: avgScore,
-            icon: "📊",
+            Icon: BarChart3,
             accent: "from-amber-500/10 to-orange-500/10",
           },
           {
             label: "High Risk",
             value: riskDistribution[0].count,
-            icon: "🔴",
+            Icon: AlertTriangle,
             accent: "from-red-500/10 to-rose-500/10",
           },
         ].map((stat, i) => (
@@ -101,7 +102,7 @@ export default function DashboardPage() {
           >
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm text-gray-500">{stat.label}</span>
-              <span className="text-xl">{stat.icon}</span>
+              <stat.Icon className="w-5 h-5 text-accent" strokeWidth={1.75} />
             </div>
             <span className="text-3xl font-bold text-gray-200">
               {stat.value}

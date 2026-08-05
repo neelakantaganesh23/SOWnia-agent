@@ -104,16 +104,19 @@ export interface UserResponse {
   full_name: string | null;
 }
 
+// Vivid design-handoff risk palette - mirrors tailwind.config.ts's
+// colors.risk.{high,medium,low} for contexts (SVG stroke, Recharts fill)
+// that need a raw hex rather than a Tailwind class.
 export const RISK_COLORS: Record<RiskLevel, string> = {
-  HIGH: "#ef4444",
-  MEDIUM: "#f59e0b",
-  LOW: "#22c55e",
+  HIGH: "#FB4E6D",
+  MEDIUM: "#FBBF24",
+  LOW: "#34D399",
 };
 
 export const RISK_BG_COLORS: Record<RiskLevel, string> = {
-  HIGH: "rgba(239, 68, 68, 0.1)",
-  MEDIUM: "rgba(245, 158, 11, 0.1)",
-  LOW: "rgba(34, 197, 94, 0.1)",
+  HIGH: "rgba(251, 78, 109, 0.16)",
+  MEDIUM: "rgba(251, 191, 36, 0.16)",
+  LOW: "rgba(52, 211, 153, 0.16)",
 };
 
 export const DOMAIN_LABELS: Record<string, string> = {
@@ -124,10 +127,5 @@ export const DOMAIN_LABELS: Record<string, string> = {
   delivery: "Delivery Review",
 };
 
-export const DOMAIN_ICONS: Record<string, string> = {
-  legal: "⚖️",
-  financial: "💰",
-  technical: "⚙️",
-  risk: "🎯",
-  delivery: "📦",
-};
+// Domain icons live in lib/domainIcons.tsx as lucide-react components
+// (kept out of this file since it's plain data/types, not JSX).

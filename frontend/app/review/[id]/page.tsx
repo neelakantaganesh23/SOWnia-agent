@@ -2,15 +2,16 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import { FileText, ClipboardList, AlertTriangle, Users } from "lucide-react";
 import { useReviewStore } from "@/store/reviewStore";
 import { getResults, downloadPdfReport, downloadAnnotatedPdf } from "@/lib/api";
 import {
   FullReviewResult,
   DOMAIN_LABELS,
-  DOMAIN_ICONS,
   RiskLevel,
   RISK_COLORS,
 } from "@/lib/types";
+import { getDomainIcon } from "@/lib/domainIcons";
 import AgentCard from "@/components/review/AgentCard";
 import RiskBadge from "@/components/review/RiskBadge";
 
@@ -131,6 +132,7 @@ export default function ReviewResultsPage() {
               const hasFindings =
                 review?.agents?.[domain]?.findings?.length ?? 0;
               const isComplete = hasFindings > 0;
+              const DomainIcon = getDomainIcon(domain);
 
               return (
                 <div
@@ -141,7 +143,7 @@ export default function ReviewResultsPage() {
                       : "border-gray-700 bg-surface-800/50"
                   }`}
                 >
-                  <span className="text-lg">{DOMAIN_ICONS[domain]}</span>
+                  <DomainIcon className="w-4 h-4 text-accent" strokeWidth={1.75} />
                   <span className="text-sm text-gray-400">{label}</span>
                   {isComplete ? (
                     <svg
@@ -217,8 +219,9 @@ export default function ReviewResultsPage() {
             <h1 className="text-3xl font-bold text-gray-100 mb-1">
               Review Results
             </h1>
-            <p className="text-gray-500">
-              📄 {review.filename} • {new Date(review.timestamp).toLocaleString()}
+            <p className="text-gray-500 inline-flex items-center gap-1.5">
+              <FileText className="w-4 h-4" strokeWidth={1.75} />
+              {review.filename} • {new Date(review.timestamp).toLocaleString()}
             </p>
           </div>
 
@@ -355,9 +358,12 @@ export default function ReviewResultsPage() {
               {review.summary || "No summary available."}
             </p>
             <div className="flex items-center gap-6 mt-4 text-sm text-gray-500">
-              <span>📋 {totalFindings} total findings</span>
-              <span>
-                🔴{" "}
+              <span className="inline-flex items-center gap-1.5">
+                <ClipboardList className="w-4 h-4" strokeWidth={1.75} />
+                {totalFindings} total findings
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <AlertTriangle className="w-4 h-4 text-risk-high" strokeWidth={1.75} />
                 {Object.values(review.agents || {}).reduce(
                   (sum, a) =>
                     sum +
@@ -367,7 +373,9 @@ export default function ReviewResultsPage() {
                 )}{" "}
                 high risk
               </span>
-              <span>🤖 5 agents</span>
+              <span className="inline-flex items-center gap-1.5">
+                <Users className="w-4 h-4" strokeWidth={1.75} />5 agents
+              </span>
             </div>
           </div>
         </div>
