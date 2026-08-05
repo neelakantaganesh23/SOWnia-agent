@@ -48,3 +48,47 @@ variable "tags" {
     ManagedBy   = "Terraform"
   }
 }
+
+# --- Postgres (auth + per-user data) ---------------------------------------
+
+variable "pg_server_name" {
+  type        = string
+  default     = "psql-sownia-prod"
+  description = "Globally unique name for the Postgres Flexible Server"
+}
+
+variable "pg_admin_username" {
+  type        = string
+  default     = "sowniaadmin"
+  description = "Postgres server admin username"
+}
+
+variable "pg_admin_password" {
+  type        = string
+  sensitive   = true
+  description = "Postgres server admin password. Supplied via TF_VAR_pg_admin_password from a pipeline secret; never committed."
+}
+
+variable "pg_sku_name" {
+  type        = string
+  default     = "B_Standard_B1ms"
+  description = "Cheapest Burstable tier. A separate PaaS SKU - does not consume AKS node vCPU quota."
+}
+
+variable "pg_database_name" {
+  type        = string
+  default     = "sownia"
+  description = "Prod database name"
+}
+
+variable "pg_dev_database_name" {
+  type        = string
+  default     = "sownia_dev"
+  description = "Dev database name, same server as prod (shared compute, isolated catalog)"
+}
+
+variable "dev_client_ip" {
+  type        = string
+  default     = ""
+  description = "Optional developer IP for psql access via firewall rule; leave blank to skip"
+}

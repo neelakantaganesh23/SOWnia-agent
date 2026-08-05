@@ -68,10 +68,21 @@ stages:
                 az provider register --namespace Microsoft.Network || true
 
                 cd terraform
+                # Postgres admin password comes from a pipeline secret variable,
+                # never committed to the repo.
+                export TF_VAR_pg_admin_password="$(PG_ADMIN_PASSWORD)"
+
                 # init connects to the azurerm remote backend (Azure Storage)
                 terraform init -input=false -upgrade
                 terraform plan -input=false -out=tfplan
                 terraform apply -input=false -auto-approve tfplan
+
+                # Capture the Postgres host so the Deploy stage can build
+                # DATABASE_URL without re-running Terraform. Written to a
+                # pipeline variable visible to later stages.
+                PG_FQDN=$(terraform output -raw postgres_fqdn)
+                echo "##vso[task.setvariable variable=pgFqdn;isOutput=true]$PG_FQDN"
+              name: TerraformOutputs
 
   # ─── STAGE 2: Build & Push Docker Images to ACR ────────────────────────────
   - stage: Build
@@ -106,7 +117,11 @@ stages:
   # ─── STAGE 3: Deploy Helm Chart to AKS Cluster ─────────────────────────────
   - stage: Deploy
     displayName: '3. Deploy Helm Chart to AKS'
-    dependsOn: Build
+    dependsOn:
+      - Terraform
+      - Build
+    variables:
+      pgFqdn: $[ stageDependencies.Terraform.TerraformApply.outputs['TerraformOutputs.pgFqdn'] ]
     jobs:
       - job: HelmDeploy
         displayName: 'Deploy Unified Helm Release'
@@ -120,9 +135,13 @@ stages:
               scriptType: 'bash'
               scriptLocation: 'inlineScript'
               inlineScript: |
+                set -e
                 # Get AKS credentials
                 az aks get-credentials --resource-group $(resourceGroup) --name $(aksCluster) --overwrite-existing
-                
+
+                # Username matches terraform/variables.tf's pg_admin_username default.
+                DATABASE_URL="postgresql://sowniaadmin:$(PG_ADMIN_PASSWORD)@$(pgFqdn):5432/sownia?sslmode=require"
+
                 # Upgrade or Install Helm Chart
                 helm upgrade --install sownia ./helm/sownia \
                   --namespace default \
@@ -131,4 +150,8 @@ stages:
                   --set frontend.image.repository=$(acrName).azurecr.io/$(imageRepositoryFrontend) \
                   --set frontend.image.tag=$(tag) \
                   --set secrets.googleApiKey="$(GOOGLE_API_KEY)" \
-                  --set secrets.hfToken="$(HF_TOKEN)"
+                  --set secrets.hfToken="$(HF_TOKEN)" \
+                  --set secrets.databaseUrl="$DATABASE_URL" \
+                  --set secrets.jwtSecretKey="$(JWT_SECRET_KEY)" \
+                  --set secrets.googleClientId="$(GOOGLE_CLIENT_ID)" \
+                  --set secrets.googleClientSecret="$(GOOGLE_CLIENT_SECRET)"
