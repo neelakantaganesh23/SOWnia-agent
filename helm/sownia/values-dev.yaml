@@ -1,0 +1,35 @@
+# Dev environment overrides, merged on top of values.yaml via:
+#   helm upgrade --install sownia-dev ./helm/sownia -f values.yaml -f values-dev.yaml
+# Deployed to its own namespace ("dev") and release name ("sownia-dev") so it
+# never touches the prod release. Kept lean since prod and dev share the same
+# single-node cluster (free-trial vCPU quota).
+
+global:
+  environment: development
+
+backend:
+  replicaCount: 1
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+
+frontend:
+  replicaCount: 1
+  service:
+    # Separate public IP from prod so both are reachable independently.
+    type: LoadBalancer
+  resources:
+    limits:
+      cpu: 250m
+      memory: 256Mi
+    requests:
+      cpu: 50m
+      memory: 128Mi
+
+# No ingress in dev — a domain/TLS isn't needed for internal UI testing.
+ingress:
+  enabled: false

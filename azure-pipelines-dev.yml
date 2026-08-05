@@ -1,0 +1,85 @@
+name: $(Build.DefinitionName)_$(Date:yyyyMMdd)$(Rev:.r)
+
+# Dev pipeline: triggers only on the develop branch. Deploys to its own
+# "dev" namespace and Helm release, on the SAME AKS cluster as prod — no
+# Terraform stage here, since dev reuses the infra prod's pipeline already
+# provisions. This must be registered as its OWN pipeline in Azure DevOps
+# pointing at this YAML file (Pipelines -> New pipeline -> Existing YAML ->
+# /azure-pipelines-dev.yml), so it runs independently of the prod pipeline.
+trigger:
+  batch: false
+  branches:
+    include:
+      - develop
+
+pr: none
+
+variables:
+  azureSubscription: 'Azure-DevOps-Service-Connection'
+  resourceGroup: 'rg-sownia-aks-prod'
+  aksCluster: 'aks-sownia-prod'
+  acrName: 'acrsowniaaksprod'
+  imageRepositoryBackend: 'sownia-backend'
+  imageRepositoryFrontend: 'sownia-frontend'
+  tag: 'dev-$(Build.BuildId)'
+  k8sNamespace: 'dev'
+  helmRelease: 'sownia-dev'
+
+stages:
+  # ─── STAGE 1: Build & Push Docker Images to ACR ────────────────────────────
+  - stage: Build
+    displayName: '1. Build & Push Docker Images (dev)'
+    jobs:
+      - job: BuildAndPush
+        displayName: 'Docker Build & Push'
+        pool:
+          vmImage: 'ubuntu-latest'
+        steps:
+          - task: AzureCLI@1
+            displayName: 'Login to ACR, Build & Push Images'
+            inputs:
+              azureSubscription: $(azureSubscription)
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                set -e
+                az acr login --name $(acrName)
+
+                docker build -t $(acrName).azurecr.io/$(imageRepositoryBackend):$(tag) ./backend
+                docker push $(acrName).azurecr.io/$(imageRepositoryBackend):$(tag)
+
+                docker build -t $(acrName).azurecr.io/$(imageRepositoryFrontend):$(tag) ./frontend
+                docker push $(acrName).azurecr.io/$(imageRepositoryFrontend):$(tag)
+
+  # ─── STAGE 2: Deploy to the "dev" namespace via its own Helm release ───────
+  - stage: Deploy
+    displayName: '2. Deploy Helm Release (dev)'
+    dependsOn: Build
+    jobs:
+      - job: HelmDeploy
+        displayName: 'Deploy sownia-dev'
+        pool:
+          vmImage: 'ubuntu-latest'
+        steps:
+          - task: AzureCLI@1
+            displayName: 'Deploy via Helm to AKS (dev namespace)'
+            inputs:
+              azureSubscription: $(azureSubscription)
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                set -e
+                az aks get-credentials --resource-group $(resourceGroup) --name $(aksCluster) --overwrite-existing
+
+                kubectl create namespace $(k8sNamespace) --dry-run=client -o yaml | kubectl apply -f -
+
+                helm upgrade --install $(helmRelease) ./helm/sownia \
+                  -f ./helm/sownia/values.yaml \
+                  -f ./helm/sownia/values-dev.yaml \
+                  --namespace $(k8sNamespace) \
+                  --set backend.image.repository=$(acrName).azurecr.io/$(imageRepositoryBackend) \
+                  --set backend.image.tag=$(tag) \
+                  --set frontend.image.repository=$(acrName).azurecr.io/$(imageRepositoryFrontend) \
+                  --set frontend.image.tag=$(tag) \
+                  --set secrets.googleApiKey="$(GOOGLE_API_KEY)" \
+                  --set secrets.hfToken="$(HF_TOKEN)"
