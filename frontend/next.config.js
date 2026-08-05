@@ -5,7 +5,7 @@ const nextConfig = {
   async rewrites() {
     // These run on the SERVER (frontend pod), where NEXT_PUBLIC_API_URL is
     // available at runtime and resolves the in-cluster backend service.
-    const backend = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    const backend = process.env.NEXT_PUBLIC_API_URL || "http://sownia-backend:7860";
     return [
       {
         source: "/api/:path*",
