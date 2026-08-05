@@ -61,10 +61,14 @@ resource "azurerm_kubernetes_cluster" "sownia_aks" {
   oidc_issuer_enabled = true
 
   default_node_pool {
-    name            = "systempool"
-    node_count      = var.node_count
-    vm_size         = var.node_vm_size
-    os_disk_size_gb = 32
+    name       = "systempool"
+    node_count = var.node_count
+    vm_size    = var.node_vm_size
+    # 64 GB: the 3.1 GB backend image plus per-deploy image churn overflows a
+    # 32 GB disk and triggers DiskPressure pod evictions. NOTE: changing this
+    # recreates the node pool (brief workload downtime; the LoadBalancer IP and
+    # HF-dataset storage persist).
+    os_disk_size_gb = 64
   }
 
   identity {
