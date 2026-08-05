@@ -73,6 +73,10 @@ stages:
 
                 kubectl create namespace $(k8sNamespace) --dry-run=client -o yaml | kubectl apply -f -
 
+                # DEV_DATABASE_URL points at the "sownia_dev" database on the
+                # same Postgres server prod provisions via Terraform (see
+                # DEPLOYMENT.md) - the dev pipeline has no Terraform stage
+                # and never needs cloud infra credentials itself.
                 helm upgrade --install $(helmRelease) ./helm/sownia \
                   -f ./helm/sownia/values.yaml \
                   -f ./helm/sownia/values-dev.yaml \
@@ -82,4 +86,6 @@ stages:
                   --set frontend.image.repository=$(acrName).azurecr.io/$(imageRepositoryFrontend) \
                   --set frontend.image.tag=$(tag) \
                   --set secrets.googleApiKey="$(GOOGLE_API_KEY)" \
-                  --set secrets.hfToken="$(HF_TOKEN)"
+                  --set secrets.hfToken="$(HF_TOKEN)" \
+                  --set secrets.databaseUrl="$(DEV_DATABASE_URL)" \
+                  --set secrets.jwtSecretKey="$(JWT_SECRET_KEY)"

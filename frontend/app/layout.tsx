@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import AuthNav from "@/components/layout/AuthNav";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -46,6 +47,8 @@ export default function RootLayout({
                 <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse-slow" />
                 <span className="text-xs text-gray-500">API Connected</span>
               </div>
+              <div className="ml-3 w-px h-6 bg-gray-700" />
+              <AuthNav />
             </nav>
           </div>
         </header>

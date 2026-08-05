@@ -31,6 +31,30 @@ spec:
                 secretKeyRef:
                   name: {{ .Release.Name }}-secrets
                   key: HF_TOKEN
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-secrets
+                  key: DATABASE_URL
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-secrets
+                  key: SECRET_KEY
+            - name: GOOGLE_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-secrets
+                  key: GOOGLE_CLIENT_ID
+            - name: GOOGLE_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-secrets
+                  key: GOOGLE_CLIENT_SECRET
+            - name: GOOGLE_REDIRECT_URI
+              value: {{ .Values.backend.googleRedirectUri | quote }}
+            - name: FRONTEND_BASE_URL
+              value: {{ .Values.backend.frontendBaseUrl | quote }}
             - name: ENVIRONMENT
               value: {{ .Values.global.environment | quote }}
           livenessProbe:

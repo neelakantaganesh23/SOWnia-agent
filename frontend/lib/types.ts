@@ -96,6 +96,14 @@ export interface ApiError {
   error_code?: string;
 }
 
+// ─── Auth Types ──────────────────────────────────────────────────────────────
+
+export interface UserResponse {
+  id: string;
+  email: string;
+  full_name: string | null;
+}
+
 export const RISK_COLORS: Record<RiskLevel, string> = {
   HIGH: "#ef4444",
   MEDIUM: "#f59e0b",

@@ -9,6 +9,13 @@ global:
 
 backend:
   replicaCount: 1
+  # Dev's frontend is a bare LoadBalancer IP (no HTTPS/domain), so Google's
+  # OAuth redirect-URI validation will reject it - dev is email/password
+  # only by design (see DEPLOYMENT.md). The real value is set at deploy
+  # time via --set once the dev pipeline knows the LB IP; this is just a
+  # harmless placeholder so the app boots.
+  googleRedirectUri: "http://localhost:3000/api/v1/auth/google/callback"
+  frontendBaseUrl: "http://localhost:3000"
   resources:
     limits:
       cpu: 500m
