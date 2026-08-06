@@ -66,6 +66,7 @@ stages:
                 az provider register --namespace Microsoft.ContainerService || echo "provider register skipped (insufficient rights - expected on free trial)"
                 az provider register --namespace Microsoft.ContainerRegistry || true
                 az provider register --namespace Microsoft.Network || true
+                az provider register --namespace Microsoft.DBforPostgreSQL || true
 
                 cd terraform
                 # Postgres admin password comes from a pipeline secret variable,
