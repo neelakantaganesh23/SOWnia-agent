@@ -14,6 +14,27 @@ spec:
       labels:
         app.kubernetes.io/component: backend
     spec:
+      initContainers:
+        # Wait for in-cluster Postgres to accept connections, then apply
+        # Alembic migrations before the app starts. Runs on every rollout;
+        # `alembic upgrade head` is idempotent (no-op when already current).
+        - name: db-migrate
+          image: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}"
+          imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
+          command:
+            - sh
+            - -c
+            - |
+              until python -c "import socket,sys; s=socket.socket(); s.settimeout(2); s.connect(('{{ .Release.Name }}-postgres',5432))" 2>/dev/null; do
+                echo "waiting for postgres..."; sleep 2;
+              done
+              cd backend && alembic upgrade head
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-secrets
+                  key: DATABASE_URL
       containers:
         - name: backend
           image: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}"

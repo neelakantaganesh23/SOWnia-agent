@@ -40,3 +40,17 @@ frontend:
 # No ingress in dev — a domain/TLS isn't needed for internal UI testing.
 ingress:
   enabled: false
+
+# Dev's own in-cluster Postgres, isolated in the dev namespace. Password is a
+# fixed internal value (the DB is ClusterIP-only, never exposed outside the
+# cluster), so dev needs no DB pipeline secret. Smaller disk than prod.
+postgres:
+  password: "dev-internal-pg-pw"
+  storage: "1Gi"
+  resources:
+    limits:
+      cpu: 300m
+      memory: 384Mi
+    requests:
+      cpu: 50m
+      memory: 192Mi

@@ -67,7 +67,24 @@ secrets:
   googleApiKey: "YOUR_GOOGLE_API_KEY"
   hfToken: "YOUR_HF_TOKEN"
   langchainApiKey: "YOUR_LANGCHAIN_API_KEY"
-  databaseUrl: "postgresql://user:pass@host:5432/sownia?sslmode=require"
   jwtSecretKey: "CHANGE_ME"
   googleClientId: ""
   googleClientSecret: ""
+
+# In-cluster Postgres (StatefulSet + PVC). DATABASE_URL is built from these
+# in helm/sownia/templates/secret.yaml. The password should be overridden at
+# deploy time via --set postgres.password from a pipeline secret.
+postgres:
+  enabled: true
+  image: "postgres:16"
+  user: "sownia"
+  password: "CHANGE_ME_INTERNAL"
+  database: "sownia"
+  storage: "2Gi"
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 256Mi
