@@ -100,10 +100,10 @@ resource "azurerm_role_assignment" "aks_acr_pull" {
 resource "azurerm_postgresql_flexible_server" "sownia_pg" {
   name                = var.pg_server_name
   resource_group_name = var.resource_group_name
-  location            = var.location
-  # 16 is rejected on this subscription/region ("Version should be in: []").
-  # 14 is broadly available across regions/tiers on free-trial subscriptions.
-  version = "14"
+  # Deliberately NOT var.location - eastus has zero Postgres Flexible Server
+  # capacity/quota on this free-trial subscription (see variables.tf).
+  location = var.pg_location
+  version  = "14"
 
   administrator_login    = var.pg_admin_username
   administrator_password = var.pg_admin_password

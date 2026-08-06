@@ -57,6 +57,12 @@ variable "pg_server_name" {
   description = "Globally unique name for the Postgres Flexible Server"
 }
 
+variable "pg_location" {
+  type        = string
+  default     = "eastus2"
+  description = "Region for the Postgres Flexible Server. Kept independent from var.location: eastus returns an empty allowed-version list on this free-trial subscription (zero Flexible Server capacity/quota there), which surfaces as a confusing 'Version should be in: []' error rather than a clear quota message. Postgres connects over its public endpoint, not a VNet, so it does not need to share a region with AKS."
+}
+
 variable "pg_admin_username" {
   type        = string
   default     = "sowniaadmin"
