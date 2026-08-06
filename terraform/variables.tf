@@ -48,3 +48,7 @@ variable "tags" {
     ManagedBy   = "Terraform"
   }
 }
+
+# Postgres now runs in-cluster via Helm (see helm/sownia/templates/
+# postgres-*.yaml), not as an Azure PaaS resource, so no Postgres-related
+# Terraform variables are needed here anymore.

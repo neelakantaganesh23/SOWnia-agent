@@ -61,10 +61,19 @@ resource "azurerm_kubernetes_cluster" "sownia_aks" {
   oidc_issuer_enabled = true
 
   default_node_pool {
-    name            = "systempool"
-    node_count      = var.node_count
-    vm_size         = var.node_vm_size
-    os_disk_size_gb = 32
+    name       = "systempool"
+    node_count = var.node_count
+    vm_size    = var.node_vm_size
+    # 64 GB: the 3.1 GB backend image plus per-deploy image churn overflows a
+    # 32 GB disk and triggers DiskPressure pod evictions. NOTE: changing this
+    # recreates the node pool (brief workload downtime; the LoadBalancer IP and
+    # HF-dataset storage persist).
+    os_disk_size_gb = 64
+    # Required whenever certain node-pool properties (os_disk_size_gb, vm_size,
+    # etc.) change in place: Azure spins up a temporary pool under this name,
+    # migrates workloads, then deletes it - avoids the provider's
+    # "temporary_name_for_rotation must be specified" error.
+    temporary_name_for_rotation = "temppool"
   }
 
   identity {
@@ -84,3 +93,10 @@ resource "azurerm_role_assignment" "aks_acr_pull" {
   scope                            = azurerm_container_registry.sownia_acr.id
   skip_service_principal_aad_check = true
 }
+
+# NOTE: Azure Database for PostgreSQL Flexible Server was removed - this
+# free-trial subscription has zero Flexible Server capacity in every region
+# tried (the API reports an empty allowed-version list). Postgres now runs
+# IN-CLUSTER as a StatefulSet on a PersistentVolume, deployed via the Helm
+# chart (helm/sownia/templates/postgres-*.yaml) - no Azure PaaS quota needed,
+# each namespace gets its own isolated database.
