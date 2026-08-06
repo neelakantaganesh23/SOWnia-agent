@@ -13,15 +13,3 @@ output "aks_cluster_name" {
 output "aks_cluster_fqdn" {
   value = azurerm_kubernetes_cluster.sownia_aks.fqdn
 }
-
-output "postgres_fqdn" {
-  value = azurerm_postgresql_flexible_server.sownia_pg.fqdn
-}
-
-output "postgres_database_name" {
-  value = azurerm_postgresql_flexible_server_database.sownia_db.name
-}
-
-output "postgres_dev_database_name" {
-  value = azurerm_postgresql_flexible_server_database.sownia_dev_db.name
-}

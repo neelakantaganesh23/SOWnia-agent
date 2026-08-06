@@ -94,63 +94,9 @@ resource "azurerm_role_assignment" "aks_acr_pull" {
   skip_service_principal_aad_check = true
 }
 
-# 5. Postgres Flexible Server — backs the auth system + per-user data.
-# Burstable B1ms is a separate PaaS SKU and does NOT count against the
-# AKS node vCPU quota, so it fits the free-trial 4-vCPU constraint.
-resource "azurerm_postgresql_flexible_server" "sownia_pg" {
-  name                = var.pg_server_name
-  resource_group_name = var.resource_group_name
-  # Deliberately NOT var.location - eastus has zero Postgres Flexible Server
-  # capacity/quota on this free-trial subscription (see variables.tf).
-  location = var.pg_location
-  version  = "14"
-
-  administrator_login    = var.pg_admin_username
-  administrator_password = var.pg_admin_password
-
-  sku_name   = var.pg_sku_name
-  storage_mb = 32768 # 32GB minimum tier
-
-  backup_retention_days        = 7
-  public_network_access_enabled = true
-
-  tags = var.tags
-}
-
-# One server, two databases: prod and dev share compute (avoids doubling
-# recurring cost on a free trial) but stay fully isolated as separate
-# database catalogs, so a bad dev migration/test can never touch prod data.
-resource "azurerm_postgresql_flexible_server_database" "sownia_db" {
-  name      = var.pg_database_name
-  server_id = azurerm_postgresql_flexible_server.sownia_pg.id
-  charset   = "UTF8"
-  collation = "en_US.utf8"
-}
-
-resource "azurerm_postgresql_flexible_server_database" "sownia_dev_db" {
-  name      = var.pg_dev_database_name
-  server_id = azurerm_postgresql_flexible_server.sownia_pg.id
-  charset   = "UTF8"
-  collation = "en_US.utf8"
-}
-
-# Allow AKS pods to reach Postgres. The cluster uses kubenet + a standard
-# LB with no static/pinned egress IP configured, so per-IP rules aren't
-# practical here; this is Azure's documented "allow all Azure resources"
-# rule (broader than a VNet-scoped rule — acceptable for this free-trial
-# setup, can be tightened later with VNet integration).
-resource "azurerm_postgresql_flexible_server_firewall_rule" "allow_azure_services" {
-  name             = "AllowAzureServices"
-  server_id        = azurerm_postgresql_flexible_server.sownia_pg.id
-  start_ip_address = "0.0.0.0"
-  end_ip_address   = "0.0.0.0"
-}
-
-# Optional: a developer's own IP for direct psql debugging.
-resource "azurerm_postgresql_flexible_server_firewall_rule" "dev_client" {
-  count            = var.dev_client_ip != "" ? 1 : 0
-  name             = "AllowDevClient"
-  server_id        = azurerm_postgresql_flexible_server.sownia_pg.id
-  start_ip_address = var.dev_client_ip
-  end_ip_address   = var.dev_client_ip
-}
+# NOTE: Azure Database for PostgreSQL Flexible Server was removed - this
+# free-trial subscription has zero Flexible Server capacity in every region
+# tried (the API reports an empty allowed-version list). Postgres now runs
+# IN-CLUSTER as a StatefulSet on a PersistentVolume, deployed via the Helm
+# chart (helm/sownia/templates/postgres-*.yaml) - no Azure PaaS quota needed,
+# each namespace gets its own isolated database.
