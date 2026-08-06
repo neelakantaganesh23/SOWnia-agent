@@ -32,6 +32,10 @@ alembic
 psycopg2-binary
 python-jose[cryptography]
 passlib[bcrypt]
+# Pin bcrypt <4.1: passlib 1.7.4 reads bcrypt.__about__.__version__, which
+# bcrypt 4.1+ removed - the resulting backend-detection failure surfaces as a
+# spurious "password cannot be longer than 72 bytes" 500 on signup/login.
+bcrypt==4.0.1
 email-validator
 # Google OAuth uses httpx directly (already a dependency above) - no
 # separate OAuth library needed.
