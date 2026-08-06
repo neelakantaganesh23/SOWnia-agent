@@ -69,6 +69,11 @@ resource "azurerm_kubernetes_cluster" "sownia_aks" {
     # recreates the node pool (brief workload downtime; the LoadBalancer IP and
     # HF-dataset storage persist).
     os_disk_size_gb = 64
+    # Required whenever certain node-pool properties (os_disk_size_gb, vm_size,
+    # etc.) change in place: Azure spins up a temporary pool under this name,
+    # migrates workloads, then deletes it - avoids the provider's
+    # "temporary_name_for_rotation must be specified" error.
+    temporary_name_for_rotation = "temppool"
   }
 
   identity {
@@ -96,7 +101,9 @@ resource "azurerm_postgresql_flexible_server" "sownia_pg" {
   name                = var.pg_server_name
   resource_group_name = var.resource_group_name
   location            = var.location
-  version             = "16"
+  # 16 is rejected on this subscription/region ("Version should be in: []").
+  # 14 is broadly available across regions/tiers on free-trial subscriptions.
+  version = "14"
 
   administrator_login    = var.pg_admin_username
   administrator_password = var.pg_admin_password
