@@ -14,14 +14,14 @@ langchain-community
 langgraph
 langsmith
 huggingface_hub
-sentence-transformers
+# NOTE: sentence-transformers and faiss-cpu removed - they were unused
+# (the SemanticChunker is pure regex/string logic, no embeddings) and
+# pulled in torch + NVIDIA CUDA libs, bloating the image to ~3GB and
+# overflowing the node disk. Removing them cuts the image dramatically.
 
 # Document Parsing
 PyMuPDF
 python-docx
-
-# Vector Store
-faiss-cpu
 
 # Output
 weasyprint
