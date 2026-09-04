@@ -58,3 +58,6 @@ uploads/
 # WeasyPrint output
 *.pdf
 !tests/fixtures/*.pdf
+
+# Design-handoff archive (redundant with the extracted folder)
+*.zip
