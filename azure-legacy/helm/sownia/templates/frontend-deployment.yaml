@@ -22,6 +22,6 @@ spec:
             - containerPort: {{ .Values.frontend.service.port }}
           env:
             - name: NEXT_PUBLIC_API_URL
-              value: "http://{{ .Release.Name }}-backend:{{ .Values.backend.service.port }}"
+              value: "http://sownia-backend:{{ .Values.backend.service.port }}"
           resources:
             {{- toYaml .Values.frontend.resources | nindent 12 }}

@@ -1,3 +1,4 @@
+import { Circle } from "lucide-react";
 import { RiskLevel } from "@/lib/types";
 
 interface RiskBadgeProps {
@@ -12,16 +13,12 @@ export default function RiskBadge({ level, size = "md" }: RiskBadgeProps) {
     lg: "px-4 py-1.5 text-sm",
   };
 
+  const iconSizes = { sm: 8, md: 10, lg: 12 };
+
   const levelClasses = {
     HIGH: "risk-badge-high",
     MEDIUM: "risk-badge-medium",
     LOW: "risk-badge-low",
-  };
-
-  const icons = {
-    HIGH: "🔴",
-    MEDIUM: "🟡",
-    LOW: "🟢",
   };
 
   return (
@@ -29,7 +26,7 @@ export default function RiskBadge({ level, size = "md" }: RiskBadgeProps) {
       className={`${levelClasses[level]} ${sizeClasses[size]}`}
       id={`risk-badge-${level.toLowerCase()}`}
     >
-      <span className="text-[0.6em]">{icons[level]}</span>
+      <Circle size={iconSizes[size]} className="fill-current" />
       {level}
     </span>
   );

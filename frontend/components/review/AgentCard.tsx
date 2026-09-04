@@ -1,4 +1,5 @@
-import { AgentCardProps, DOMAIN_ICONS, DOMAIN_LABELS, RiskLevel } from "@/lib/types";
+import { AgentCardProps, DOMAIN_LABELS, RiskLevel } from "@/lib/types";
+import { getDomainIcon } from "@/lib/domainIcons";
 import RiskBadge from "./RiskBadge";
 import ConfidenceBar from "./ConfidenceBar";
 import FindingsList from "./FindingsList";
@@ -10,7 +11,7 @@ export default function AgentCard({
   confidence,
   riskLevel,
 }: AgentCardProps) {
-  const icon = DOMAIN_ICONS[domain] || "🔍";
+  const DomainIcon = getDomainIcon(domain);
   const label = DOMAIN_LABELS[domain] || domain;
 
   // Compute dominant risk level from findings
@@ -46,7 +47,7 @@ export default function AgentCard({
       <div className="p-5 pb-4 border-b border-gray-200/5">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-3">
-            <span className="text-2xl">{icon}</span>
+            <DomainIcon className="w-6 h-6 text-accent" strokeWidth={1.75} />
             <div>
               <h3 className="font-semibold text-gray-200">{label}</h3>
               <p className="text-xs text-gray-500">

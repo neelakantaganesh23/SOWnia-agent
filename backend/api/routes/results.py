@@ -6,18 +6,25 @@ Provides endpoints to:
 - GET /results/{review_id}/annotated-pdf  — Download original PDF with highlighted findings
 - GET /reviews                            — List all past reviews
 - DELETE /reviews/{review_id}             — Delete a review record
+
+All reads/writes are scoped to the authenticated user via user_id, so
+one user can never see or act on another user's reviews/files.
 """
 
 import io
 import json
 import logging
-from datetime import datetime
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
+from sqlalchemy.orm import Session
 
-from backend.api.routes.review import review_results
+from backend.auth.dependencies import get_current_user
+from backend.db.session import get_db
+from backend.models.review import Review
+from backend.models.uploaded_file import UploadedFile
+from backend.models.user import User
 from backend.schemas.review import (
     DeleteReviewResponse,
     ReviewListItem,
@@ -31,102 +38,70 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-@router.get(
-    "/results/{review_id}",
-    summary="Get full review results",
-)
-async def get_results(review_id: str):
-    """Get the full review results for a given review ID.
+def _review_to_dict(review: Review) -> dict:
+    """Matches the historical in-memory/HF-JSONL review shape so the
+    frontend's existing types/consumers need no changes."""
+    return {
+        "review_id": str(review.id),
+        "file_id": str(review.file_id),
+        "filename": review.filename,
+        "timestamp": review.created_at.isoformat() if review.created_at else None,
+        "status": review.status,
+        "overall_risk_score": review.overall_risk_score,
+        "overall_risk_level": review.overall_risk_level,
+        "summary": review.summary,
+        "error": review.error,
+        "agents": review.agents_json or {},
+    }
 
-    Returns the complete JSON output including all agent findings,
-    risk scores, and executive summary.
 
-    Args:
-        review_id: UUID of the review.
-
-    Returns:
-        Full review results dictionary.
-
-    Raises:
-        HTTPException: If review_id is not found.
-    """
-    # Check in-memory results first
-    if review_id in review_results:
-        return review_results[review_id]
-
-    # Fall back to HF Datasets storage
-    try:
-        from backend.storage.hf_storage import hf_storage
-        review = hf_storage.get_review(review_id)
-        if review:
-            return review
-    except Exception as e:
-        logger.warning(f"Could not fetch from HF storage: {e}")
-
-    raise HTTPException(
-        status_code=status.HTTP_404_NOT_FOUND,
-        detail=f"Review with ID '{review_id}' not found.",
+def _get_owned_review(review_id: str, current_user: User, db: Session) -> Review:
+    review = (
+        db.query(Review)
+        .filter(Review.id == review_id, Review.user_id == current_user.id)
+        .first()
     )
-
-
-@router.get(
-    "/results/{review_id}/pdf",
-    summary="Download PDF report",
-)
-async def get_pdf_report(review_id: str):
-    """Generate and download a PDF report for a review.
-
-    Uses WeasyPrint to generate a professional PDF report with:
-    - Cover page with filename, date, overall risk score
-    - Executive summary
-    - Risk overview table
-    - Per-domain findings
-    - Recommendations
-
-    Args:
-        review_id: UUID of the review.
-
-    Returns:
-        StreamingResponse with the PDF file.
-
-    Raises:
-        HTTPException: If review is not found or not complete.
-    """
-    # Get review data
-    review_data = None
-    if review_id in review_results:
-        review_data = review_results[review_id]
-    else:
-        try:
-            from backend.storage.hf_storage import hf_storage
-            review_data = hf_storage.get_review(review_id)
-        except Exception:
-            pass
-
-    if not review_data:
+    if not review:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Review with ID '{review_id}' not found.",
         )
+    return review
+
+
+@router.get("/results/{review_id}", summary="Get full review results")
+async def get_results(
+    review_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    review = _get_owned_review(review_id, current_user, db)
+    return _review_to_dict(review)
+
+
+@router.get("/results/{review_id}/pdf", summary="Download PDF report")
+async def get_pdf_report(
+    review_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Generate and download a PDF report for a review via WeasyPrint."""
+    review = _get_owned_review(review_id, current_user, db)
+    review_data = _review_to_dict(review)
 
     if review_data.get("status") != "complete":
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=f"Review is not yet complete. "
-            f"Current status: {review_data.get('status')}.",
+            detail=f"Review is not yet complete. Current status: {review_data.get('status')}.",
         )
 
-    # Generate PDF
     try:
         pdf_bytes = _generate_pdf_report(review_data)
         filename = f"sownia_report_{review_id[:8]}.pdf"
-
         return StreamingResponse(
             io.BytesIO(pdf_bytes),
             media_type="application/pdf",
-            headers={
-                "Content-Disposition": f"attachment; filename={filename}"
-            },
+            headers={"Content-Disposition": f"attachment; filename={filename}"},
         )
     except Exception as e:
         logger.error(f"PDF generation failed: {e}")
@@ -136,115 +111,63 @@ async def get_pdf_report(review_id: str):
         )
 
 
-@router.get(
-    "/results/{review_id}/annotated-pdf",
-    summary="Download annotated PDF with highlighted findings",
-)
-async def get_annotated_pdf(review_id: str):
-    """Download the original uploaded PDF with findings highlighted.
-
-    Uses PyMuPDF to search for each finding's source_text in the
-    original PDF, highlight it with a risk-level colour, and attach
-    pop-up annotation comments with the finding details.
-
-    Args:
-        review_id: UUID of the review.
-
-    Returns:
-        StreamingResponse with the annotated PDF file.
-
-    Raises:
-        HTTPException: If review is not found, not complete, or
-                       the original file is not a PDF.
-    """
-    # Get review data
-    review_data = None
-    if review_id in review_results:
-        review_data = review_results[review_id]
-    else:
-        try:
-            from backend.storage.hf_storage import hf_storage
-            review_data = hf_storage.get_review(review_id)
-        except Exception:
-            pass
-
-    if not review_data:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Review with ID '{review_id}' not found.",
-        )
+@router.get("/results/{review_id}/annotated-pdf", summary="Download annotated PDF with highlighted findings")
+async def get_annotated_pdf(
+    review_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Download the original uploaded PDF with findings highlighted."""
+    review = _get_owned_review(review_id, current_user, db)
+    review_data = _review_to_dict(review)
 
     if review_data.get("status") != "complete":
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=f"Review is not yet complete. "
-            f"Current status: {review_data.get('status')}.",
+            detail=f"Review is not yet complete. Current status: {review_data.get('status')}.",
         )
 
-    # Get the original file bytes
-    file_id = review_data.get("file_id")
-    if not file_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No file_id associated with this review.",
-        )
-
-    from backend.api.routes.upload import uploaded_files
-    file_data = uploaded_files.get(file_id)
-    if not file_data:
+    file_row = (
+        db.query(UploadedFile)
+        .filter(UploadedFile.id == review.file_id, UploadedFile.user_id == current_user.id)
+        .first()
+    )
+    if not file_row:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Original uploaded file not found in memory. "
-            "Re-upload and re-review the document.",
+            detail="Original uploaded file not found. Re-upload and re-review the document.",
         )
 
-    file_bytes = file_data.get("file_bytes")
-    if not file_bytes:
+    if file_row.content_type != "application/pdf":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Original file bytes not available for annotation.",
+            detail="Annotated PDF is only available for PDF uploads. DOCX files are not supported for annotation.",
         )
 
-    content_type = file_data.get("content_type", "")
-    if content_type != "application/pdf":
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Annotated PDF is only available for PDF uploads. "
-            "DOCX files are not supported for annotation.",
-        )
-
-    # Gather all findings across all agents
     all_findings = []
-    agents = review_data.get("agents", {})
-    for domain, agent_data in agents.items():
+    for agent_data in (review_data.get("agents") or {}).values():
         if isinstance(agent_data, dict):
-            for finding in agent_data.get("findings", []):
-                all_findings.append(finding)
+            all_findings.extend(agent_data.get("findings", []))
 
     if not all_findings:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No findings to annotate.",
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No findings to annotate.")
 
-    # Annotate the PDF
     try:
         from backend.utils.pdf_annotator import PDFAnnotator
-        annotated_bytes = PDFAnnotator.annotate(file_bytes, all_findings)
 
-        original_name = file_data.get("filename", "document")
-        # Strip extension and add _annotated
-        if original_name.lower().endswith(".pdf"):
-            annotated_name = original_name[:-4] + "_annotated.pdf"
-        else:
-            annotated_name = original_name + "_annotated.pdf"
+        annotated_bytes = PDFAnnotator.annotate(file_row.file_bytes, all_findings)
+
+        original_name = file_row.filename
+        annotated_name = (
+            original_name[:-4] + "_annotated.pdf"
+            if original_name.lower().endswith(".pdf")
+            else original_name + "_annotated.pdf"
+        )
 
         return StreamingResponse(
             io.BytesIO(annotated_bytes),
             media_type="application/pdf",
-            headers={
-                "Content-Disposition": f"attachment; filename={annotated_name}"
-            },
+            headers={"Content-Disposition": f"attachment; filename={annotated_name}"},
         )
     except Exception as e:
         logger.error(f"PDF annotation failed: {e}")
@@ -254,165 +177,73 @@ async def get_annotated_pdf(review_id: str):
         )
 
 
-@router.get(
-    "/reviews",
-    response_model=ReviewListResponse,
-    summary="List all past reviews",
-)
+@router.get("/reviews", response_model=ReviewListResponse, summary="List all past reviews")
 async def list_reviews(
-    risk_level: Optional[str] = Query(
-        None, description="Filter by risk level: HIGH, MEDIUM, LOW"
-    ),
+    risk_level: Optional[str] = Query(None, description="Filter by risk level: HIGH, MEDIUM, LOW"),
     limit: int = Query(50, ge=1, le=100, description="Max results"),
     offset: int = Query(0, ge=0, description="Pagination offset"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
-    """List all past reviews with optional filtering.
+    """List the CURRENT USER's past reviews only."""
+    query = db.query(Review).filter(Review.user_id == current_user.id)
 
-    Combines in-memory results with HF Datasets storage.
-
-    Args:
-        risk_level: Optional filter by risk level.
-        limit: Maximum number of results.
-        offset: Pagination offset.
-
-    Returns:
-        ReviewListResponse with paginated review list.
-    """
-    # Gather all reviews (in-memory + HF storage)
-    all_reviews = {}
-
-    # In-memory results
-    for rid, data in review_results.items():
-        all_reviews[rid] = data
-
-    # HF storage results
-    try:
-        from backend.storage.hf_storage import hf_storage
-        hf_reviews = hf_storage.list_reviews()
-        for review in hf_reviews:
-            rid = review.get("review_id")
-            if rid and rid not in all_reviews:
-                all_reviews[rid] = review
-    except Exception as e:
-        logger.warning(f"Could not fetch from HF storage: {e}")
-
-    # Convert to list items
-    items = []
-    for rid, data in all_reviews.items():
-        # Count findings
-        finding_count = 0
-        agents = data.get("agents", {})
-        for agent_data in agents.values():
-            if isinstance(agent_data, dict):
-                finding_count += len(agent_data.get("findings", []))
-
-        # Parse risk level
-        overall_risk = data.get("overall_risk_level")
-        try:
-            risk_enum = RiskLevel(overall_risk) if overall_risk else None
-        except ValueError:
-            risk_enum = None
-
-        # Parse status
-        status_str = data.get("status", "pending")
-        try:
-            status_enum = ReviewStatus(status_str)
-        except ValueError:
-            status_enum = ReviewStatus.PENDING
-
-        # Parse timestamp
-        timestamp_str = data.get("timestamp", datetime.utcnow().isoformat())
-        try:
-            timestamp = datetime.fromisoformat(timestamp_str)
-        except (ValueError, TypeError):
-            timestamp = datetime.utcnow()
-
-        item = ReviewListItem(
-            review_id=rid,
-            filename=data.get("filename", "unknown"),
-            timestamp=timestamp,
-            overall_risk_score=data.get("overall_risk_score"),
-            overall_risk_level=risk_enum,
-            status=status_enum,
-            finding_count=finding_count,
-        )
-        items.append(item)
-
-    # Apply risk level filter
     if risk_level:
         try:
-            filter_level = RiskLevel(risk_level.upper())
-            items = [i for i in items if i.overall_risk_level == filter_level]
+            query = query.filter(Review.overall_risk_level == RiskLevel(risk_level.upper()).value)
         except ValueError:
             pass
 
-    # Sort by timestamp (newest first)
-    items.sort(key=lambda i: i.timestamp, reverse=True)
+    total = query.count()
+    rows = query.order_by(Review.created_at.desc()).offset(offset).limit(limit).all()
 
-    total = len(items)
-    items = items[offset: offset + limit]
+    items = []
+    for review in rows:
+        finding_count = sum(
+            len(agent_data.get("findings", []))
+            for agent_data in (review.agents_json or {}).values()
+            if isinstance(agent_data, dict)
+        )
+        try:
+            risk_enum = RiskLevel(review.overall_risk_level) if review.overall_risk_level else None
+        except ValueError:
+            risk_enum = None
+        try:
+            status_enum = ReviewStatus(review.status)
+        except ValueError:
+            status_enum = ReviewStatus.PENDING
+
+        items.append(
+            ReviewListItem(
+                review_id=str(review.id),
+                filename=review.filename,
+                timestamp=review.created_at,
+                overall_risk_score=review.overall_risk_score,
+                overall_risk_level=risk_enum,
+                status=status_enum,
+                finding_count=finding_count,
+            )
+        )
 
     return ReviewListResponse(reviews=items, total=total)
 
 
-@router.delete(
-    "/reviews/{review_id}",
-    response_model=DeleteReviewResponse,
-    summary="Delete a review",
-)
-async def delete_review(review_id: str):
-    """Delete a review record.
-
-    Removes from both in-memory store and HF Datasets.
-
-    Args:
-        review_id: UUID of the review to delete.
-
-    Returns:
-        DeleteReviewResponse confirming deletion.
-
-    Raises:
-        HTTPException: If review_id is not found.
-    """
-    found = False
-
-    # Remove from in-memory store
-    if review_id in review_results:
-        del review_results[review_id]
-        found = True
-
-    # Remove from HF storage
-    try:
-        from backend.storage.hf_storage import hf_storage
-        if hf_storage.delete_review(review_id):
-            found = True
-    except Exception as e:
-        logger.warning(f"Could not delete from HF storage: {e}")
-
-    if not found:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Review with ID '{review_id}' not found.",
-        )
-
-    return DeleteReviewResponse(
-        review_id=review_id,
-        message="Review deleted successfully.",
-    )
+@router.delete("/reviews/{review_id}", response_model=DeleteReviewResponse, summary="Delete a review")
+async def delete_review(
+    review_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    review = _get_owned_review(review_id, current_user, db)
+    db.delete(review)
+    db.commit()
+    return DeleteReviewResponse(review_id=review_id, message="Review deleted successfully.")
 
 
 def _generate_pdf_report(review_data: dict) -> bytes:
-    """Generate a PDF report from review data using WeasyPrint.
-
-    Args:
-        review_data: Full review results dictionary.
-
-    Returns:
-        PDF file content as bytes.
-    """
+    """Generate a PDF report from review data using WeasyPrint."""
     from weasyprint import HTML
 
-    # Build HTML report
     filename = review_data.get("filename", "Unknown")
     timestamp = review_data.get("timestamp", "Unknown")
     overall_score = review_data.get("overall_risk_score", "N/A")
@@ -420,10 +251,8 @@ def _generate_pdf_report(review_data: dict) -> bytes:
     summary = review_data.get("summary", "No summary available.")
     agents = review_data.get("agents", {})
 
-    # Risk level color mapping
     level_colors = {"HIGH": "#ef4444", "MEDIUM": "#f59e0b", "LOW": "#22c55e"}
 
-    # Build findings HTML
     findings_html = ""
     for domain, agent_data in agents.items():
         if not isinstance(agent_data, dict):

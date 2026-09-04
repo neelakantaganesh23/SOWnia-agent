@@ -3,6 +3,7 @@
 import { useCallback, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { useRouter } from "next/navigation";
+import { UploadCloud, AlertCircle, X, Sparkles, FileText, File as FileIcon } from "lucide-react";
 import { useReviewStore } from "@/store/reviewStore";
 
 const ACCEPTED_TYPES = {
@@ -77,10 +78,7 @@ export default function FileUploadZone() {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
-  const getFileIcon = (type: string) => {
-    if (type === "application/pdf") return "📄";
-    return "📝";
-  };
+  const getFileIcon = (type: string) => (type === "application/pdf" ? FileText : FileIcon);
 
   return (
     <div className="w-full max-w-2xl mx-auto">
@@ -94,21 +92,12 @@ export default function FileUploadZone() {
 
         {/* Upload Icon */}
         <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-brand-500/10 to-purple-500/10 flex items-center justify-center mb-6">
-          <svg
+          <UploadCloud
             className={`w-10 h-10 text-brand-400 transition-transform duration-300 ${
               isDragActive ? "scale-110" : ""
             }`}
-            fill="none"
-            viewBox="0 0 24 24"
             strokeWidth={1.5}
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"
-            />
-          </svg>
+          />
         </div>
 
         {isDragActive ? (
@@ -130,9 +119,7 @@ export default function FileUploadZone() {
       {/* File Error */}
       {fileError && (
         <div className="mt-4 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm flex items-center gap-3">
-          <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
-          </svg>
+          <AlertCircle className="w-5 h-5 flex-shrink-0" strokeWidth={2} />
           {fileError}
         </div>
       )}
@@ -140,9 +127,7 @@ export default function FileUploadZone() {
       {/* API Error */}
       {error && (
         <div className="mt-4 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm flex items-center gap-3">
-          <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
-          </svg>
+          <AlertCircle className="w-5 h-5 flex-shrink-0" strokeWidth={2} />
           {error}
         </div>
       )}
@@ -152,7 +137,10 @@ export default function FileUploadZone() {
         <div className="mt-6 glass-card p-5 animate-slide-up">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="text-3xl">{getFileIcon(selectedFile.type)}</div>
+              {(() => {
+                const Icon = getFileIcon(selectedFile.type);
+                return <Icon className="w-8 h-8 text-brand-400" strokeWidth={1.5} />;
+              })()}
               <div>
                 <p className="font-medium text-gray-200">{selectedFile.name}</p>
                 <p className="text-sm text-gray-500">
@@ -168,9 +156,7 @@ export default function FileUploadZone() {
               }}
               className="p-2 hover:bg-white/5 rounded-lg transition-colors"
             >
-              <svg className="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
+              <X className="w-5 h-5 text-gray-500" strokeWidth={2} />
             </button>
           </div>
 
@@ -179,9 +165,7 @@ export default function FileUploadZone() {
             className="btn-primary w-full mt-4"
             id="start-review-btn"
           >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
-            </svg>
+            <Sparkles className="w-5 h-5" strokeWidth={2} />
             Start AI Review
           </button>
         </div>

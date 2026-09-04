@@ -1,18 +1,21 @@
 """Review route — POST /api/v1/review
 
 Triggers the multi-agent review pipeline for an uploaded file.
-Runs the LangGraph orchestrator asynchronously and stores results.
+Runs the LangGraph orchestrator asynchronously and stores results
+in Postgres, scoped to the requesting user.
 """
 
-import asyncio
 import logging
 import uuid
-from datetime import datetime
-from typing import Dict
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from sqlalchemy.orm import Session
 
-from backend.api.routes.upload import uploaded_files
+from backend.auth.dependencies import get_current_user
+from backend.db.session import SessionLocal, get_db
+from backend.models.review import Review
+from backend.models.uploaded_file import UploadedFile
+from backend.models.user import User
 from backend.orchestrator.graph import run_review
 from backend.schemas.review import ReviewRequest, ReviewStartResponse, ReviewStatus
 
@@ -20,113 +23,57 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-# In-memory store for review results (keyed by review_id)
-review_results: Dict[str, Dict] = {}
 
-
-def _execute_review(
-    review_id: str,
-    file_id: str,
-    filename: str,
-    sow_text: str,
-) -> None:
+def _execute_review(review_id: str, file_id: str, filename: str, sow_text: str) -> None:
     """Execute the review pipeline in the background.
 
-    This function runs the LangGraph review pipeline and stores
-    the results in the in-memory review_results dictionary.
-
-    Args:
-        review_id: UUID for this review.
-        file_id: UUID of the uploaded file.
-        filename: Original filename.
-        sow_text: Extracted SOW text.
+    Runs outside the request lifecycle, so it opens its own DB session
+    rather than reusing the request-scoped one from get_db().
     """
+    db = SessionLocal()
     try:
+        review = db.query(Review).filter(Review.id == review_id).first()
+        if not review:
+            logger.error(f"Review {review_id} disappeared before execution.")
+            return
+
         logger.info(f"Executing review {review_id} for file {file_id}...")
-        review_results[review_id]["status"] = "in_progress"
+        review.status = "in_progress"
+        db.commit()
 
         # Run the LangGraph pipeline
-        result = run_review(
-            sow_text=sow_text,
-            filename=filename,
-            review_id=review_id,
-        )
+        result = run_review(sow_text=sow_text, filename=filename, review_id=review_id)
 
-        # Convert LangGraph state to storage format
-        review_data = {
-            "review_id": review_id,
-            "file_id": file_id,
-            "filename": filename,
-            "timestamp": datetime.utcnow().isoformat(),
-            "status": result.get("status", "complete"),
-            "overall_risk_score": result.get("overall_risk_score"),
-            "summary": result.get("summary"),
-            "error": result.get("error"),
-            "agents": {
-                "legal": {
-                    "findings": result.get("legal_findings", []),
-                    "agent_confidence": _compute_agent_confidence(
-                        result.get("legal_findings", [])
-                    ),
-                },
-                "financial": {
-                    "findings": result.get("financial_findings", []),
-                    "agent_confidence": _compute_agent_confidence(
-                        result.get("financial_findings", [])
-                    ),
-                },
-                "technical": {
-                    "findings": result.get("technical_findings", []),
-                    "agent_confidence": _compute_agent_confidence(
-                        result.get("technical_findings", [])
-                    ),
-                },
-                "risk": {
-                    "findings": result.get("risk_findings", []),
-                    "agent_confidence": _compute_agent_confidence(
-                        result.get("risk_findings", [])
-                    ),
-                },
-                "delivery": {
-                    "findings": result.get("delivery_findings", []),
-                    "agent_confidence": _compute_agent_confidence(
-                        result.get("delivery_findings", [])
-                    ),
-                },
-            },
+        agents = {
+            domain: {
+                "findings": result.get(f"{domain}_findings", []),
+                "agent_confidence": _compute_agent_confidence(result.get(f"{domain}_findings", [])),
+            }
+            for domain in ("legal", "financial", "technical", "risk", "delivery")
         }
 
-        # Compute overall risk level
-        score = review_data.get("overall_risk_score")
+        review.status = result.get("status", "complete")
+        review.overall_risk_score = result.get("overall_risk_score")
+        review.summary = result.get("summary")
+        review.error = result.get("error")
+        review.agents_json = agents
+
+        score = review.overall_risk_score
         if score is not None:
-            if score >= 7.0:
-                review_data["overall_risk_level"] = "HIGH"
-            elif score >= 4.0:
-                review_data["overall_risk_level"] = "MEDIUM"
-            else:
-                review_data["overall_risk_level"] = "LOW"
+            review.overall_risk_level = "HIGH" if score >= 7.0 else "MEDIUM" if score >= 4.0 else "LOW"
 
-        review_results[review_id] = review_data
+        db.commit()
         logger.info(f"Review {review_id} completed successfully.")
-
-        # Try to save to HF Datasets (non-blocking)
-        try:
-            from backend.storage.hf_storage import hf_storage
-            hf_storage.save_review(review_data)
-        except Exception as e:
-            logger.warning(f"Failed to save review to HF Datasets: {e}")
 
     except Exception as e:
         logger.error(f"Review {review_id} failed: {e}")
-        review_results[review_id] = {
-            "review_id": review_id,
-            "file_id": file_id,
-            "filename": filename,
-            "timestamp": datetime.utcnow().isoformat(),
-            "status": "error",
-            "error": str(e),
-            "agents": {},
-        }
+        review = db.query(Review).filter(Review.id == review_id).first()
+        if review:
+            review.status = "error"
+            review.error = str(e)
+            db.commit()
+    finally:
+        db.close()
 
 
 def _compute_agent_confidence(findings: list) -> float:
@@ -146,62 +93,51 @@ def _compute_agent_confidence(findings: list) -> float:
 async def start_review(
     request: ReviewRequest,
     background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ) -> ReviewStartResponse:
     """Start a multi-agent review for a previously uploaded file.
 
-    The review runs asynchronously in the background. Use the
-    results endpoint to poll for completion.
-
-    Args:
-        request: ReviewRequest with file_id.
-        background_tasks: FastAPI background task runner.
-
-    Returns:
-        ReviewStartResponse with review_id.
-
-    Raises:
-        HTTPException: If file_id is not found.
+    Only files owned by the requesting user may be reviewed — this is
+    the enforcement point for private per-user data.
     """
     file_id = request.file_id
 
-    # Validate file exists
-    if file_id not in uploaded_files:
+    file_row = (
+        db.query(UploadedFile)
+        .filter(UploadedFile.id == file_id, UploadedFile.user_id == current_user.id)
+        .first()
+    )
+    if not file_row:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"File with ID '{file_id}' not found. "
-            f"Please upload the file first.",
+            detail=f"File with ID '{file_id}' not found. Please upload the file first.",
         )
 
-    file_data = uploaded_files[file_id]
     review_id = str(uuid.uuid4())
+    review = Review(
+        id=review_id,
+        user_id=current_user.id,
+        file_id=file_row.id,
+        filename=file_row.filename,
+        status="pending",
+    )
+    db.add(review)
+    db.commit()
 
-    # Initialize review status
-    review_results[review_id] = {
-        "review_id": review_id,
-        "file_id": file_id,
-        "filename": file_data["filename"],
-        "timestamp": datetime.utcnow().isoformat(),
-        "status": "pending",
-        "agents": {},
-    }
-
-    # Start review in background
     background_tasks.add_task(
         _execute_review,
         review_id=review_id,
-        file_id=file_id,
-        filename=file_data["filename"],
-        sow_text=file_data["text"],
+        file_id=str(file_row.id),
+        filename=file_row.filename,
+        sow_text=file_row.text,
     )
 
-    logger.info(
-        f"Review {review_id} initiated for file '{file_data['filename']}' "
-        f"(file_id: {file_id})."
-    )
+    logger.info(f"Review {review_id} initiated for file '{file_row.filename}' (user: {current_user.id}).")
 
     return ReviewStartResponse(
         review_id=review_id,
-        file_id=file_id,
+        file_id=str(file_row.id),
         status=ReviewStatus.PENDING,
         message="Review initiated. Poll /api/v1/results/{review_id} for status.",
     )

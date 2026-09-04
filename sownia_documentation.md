@@ -1,124 +1,158 @@
-# SOWnia: AI-Powered Multi-Agent SOW Review System
+# SOWnia — Project Documentation
 
-## 1. Business Problem & Solution
-
-**The Business Problem:**
-Reviewing Statements of Work (SOWs) is traditionally a highly manual, time-consuming, and error-prone process. It requires coordination across multiple domain experts (Legal, Finance, Technical, Risk, and Delivery) who must comb through lengthy documents to identify hidden risks, scope creep, unrealistic timelines, and unfavorable terms. This manual review cycle often takes days or weeks, causing delays in project kick-offs and exposing the business to potential contractual and financial liabilities if critical issues are missed.
-
-**The SOWnia Solution:**
-SOWnia is an automated, AI-powered multi-agent review system designed to replace the multi-day manual review cycle with a seamless pipeline that completes in minutes. By leveraging specialized AI agents tailored to distinct domains, SOWnia provides a comprehensive, structured, and traceable risk assessment of any SOW document. It ensures speed, accuracy, and consistency while freeing up human experts to focus on high-value mitigation strategies rather than tedious document reading.
+**Last updated:** August 2026
+**Status:** Auth + Postgres + Vivid UI redesign complete and verified on `dev`; pending merge to `main` (prod)
 
 ---
 
-## 2. Detailed Features
+## 1. What is SOWnia?
 
-- **Multi-Agent Expert Review:** Utilizes 5 specialized AI agents (Legal, Financial, Technical, Risk, and Delivery) that review the document concurrently from different perspectives.
-- **Parallel Execution:** Employs a fan-out architecture to run all 5 agents simultaneously, drastically reducing the overall review time.
-- **Multi-Format Document Parsing:** Seamlessly processes both PDF and DOCX files, preserving document structure, text, and page numbers.
-- **Traceable Findings & Annotated PDFs:** The system quotes the exact problematic text from the SOW (`source_text`). Users can download an **Annotated PDF** where findings are highlighted in risk-coded colors (🔴 High, 🟡 Medium, 🟢 Low) with pop-up sticky notes detailing the issue and recommendation.
-- **PII Protection (Defense-in-Depth):** Automatically detects and redacts Personally Identifiable Information (PII) such as emails, phone numbers, SSNs, and names before sending text to external LLMs.
-- **Structured JSON Outputs:** AI responses are strictly validated into structured Pydantic schemas, ensuring consistent formats for findings, risk levels, and confidence scores.
-- **Dynamic Risk Scoring:** Automatically synthesizes findings across all agents to calculate a weighted, overall risk score (0-10) and flags low-confidence reviews for human attention.
-- **Professional PDF Reports:** Generates polished, downloadable summary reports (via WeasyPrint) for executive stakeholders.
-- **Historical Dashboard & Analytics:** Tracks past reviews, providing a centralized dashboard for risk analytics and historical record keeping.
+SOWnia is an AI-powered, multi-agent Statement of Work (SOW) review system. Users upload a PDF/DOCX SOW document; five specialized AI agents (Legal, Financial, Technical, Risk, Delivery) analyze it in parallel via a LangGraph orchestrator and produce structured findings, risk scores, and downloadable reports.
 
 ---
 
-## 3. Architecture & Entire Workflow
+## 2. Architecture
 
-### System Architecture
-
-```mermaid
-graph TD
-    A[Next.js Frontend] -->|REST API - /upload & /review| B[FastAPI Backend]
-    
-    subgraph Backend Services
-        B --> C[Document Parser]
-        C --> D[Semantic Chunker]
-        D --> E[PII Redactor]
-    end
-    
-    subgraph LangGraph Orchestrator
-        E --> F((Fan-Out))
-        F --> G1[Legal Agent]
-        F --> G2[Financial Agent]
-        F --> G3[Technical Agent]
-        F --> G4[Risk Agent]
-        F --> G5[Delivery Agent]
-        
-        G1 --> H((Fan-In))
-        G2 --> H
-        G3 --> H
-        G4 --> H
-        G5 --> H
-        
-        H --> I[Synthesize Node]
-        I --> J[Generate Report Node]
-    end
-    
-    J --> K[Storage: HF Datasets Hub]
-    J --> L[Annotated PDF Generator]
+```
+┌─────────────────────────────────────────────────────────┐
+│                 Next.js Frontend (Vivid UI)               │
+│   Login/Signup → Upload → Review Results → Dashboard      │
+└──────────────────────┬──────────────────────────────────┘
+                       │ same-origin, proxied via next.config.js
+┌──────────────────────▼──────────────────────────────────┐
+│                  FastAPI Backend                          │
+│  Auth (JWT cookie, email/password + Google OAuth)         │
+│  ┌─────────────────────────────────────────────────┐     │
+│  │            LangGraph Orchestrator                 │    │
+│  │   Legal │ Financial │ Technical │ Risk │ Delivery  │    │
+│  │              ↓ parallel execution ↓                │    │
+│  │                  Synthesizer                       │    │
+│  └─────────────────────────────────────────────────┘     │
+└──────────────────────┬──────────────────────────────────┘
+                       │
+              ┌────────▼────────┐
+              │  In-cluster      │
+              │  Postgres        │  ← users, uploaded_files, reviews
+              │  (per namespace) │     (all rows scoped by user_id)
+              └──────────────────┘
 ```
 
-### End-to-End Workflow
-
-1. **Upload:** The user uploads a PDF or DOCX file via the Next.js frontend.
-2. **Parsing & Chunking:** The FastAPI backend extracts text and uses a `SemanticChunker` to break the document into manageable, ~1000-token chunks based on headings and paragraphs.
-3. **Redaction:** The `PIIRedactor` scrubs sensitive information using regex and pattern matching.
-4. **Orchestration (LangGraph):** The text is passed into the LangGraph state machine. The graph fans out, executing the 5 specialized agents in parallel.
-5. **Agent Analysis:** Each agent prompts the LLM (Gemini) using its domain-specific instructions. The LLM returns structured JSON containing findings, risk levels, and exact verbatim `source_text` quotes.
-6. **Synthesis:** A synthesis node aggregates all findings, computes a weighted overall risk score based on domain importance, and generates an executive summary.
-7. **Persistence:** The final state is saved to a private Hugging Face Dataset (JSONL format) for historical tracking.
-8. **Output Delivery:** The user can view the results on the web dashboard, download the raw JSON, generate a WeasyPrint summary report, or download the original PDF with automated PyMuPDF highlights and annotations.
+All three components (frontend, backend, Postgres) run as pods inside a single **Azure Kubernetes Service (AKS)** cluster.
 
 ---
 
-## 4. Agentic Framework (LangGraph)
+## 3. Infrastructure (Azure)
 
-SOWnia utilizes **LangGraph** (from the LangChain ecosystem) to manage the state machine and orchestrate the agents.
-- **StateGraph:** A typed dictionary (`SOWReviewState`) is passed between nodes, maintaining the document text, chunks, individual agent findings, and the final synthesized score.
-- **Parallel Routing:** The graph is explicitly defined to branch from the `parse_document` node to all five agent nodes concurrently, and then converge at the `synthesize` node, representing a highly efficient Map-Reduce (Fan-Out/Fan-In) pattern.
+| Resource | Purpose |
+|---|---|
+| **AKS cluster** (`aks-sownia-prod`) | Runs all workloads. 2 nodes, `Standard_D2as_v7` (2 vCPU each = 4 vCPU total, the free-trial ceiling). Free control-plane tier. |
+| **Azure Container Registry** (`acrsowniaaksprod`) | Stores `sownia-backend` / `sownia-frontend` Docker images. |
+| **Azure Load Balancer** (via AKS) | Public IP for each environment's frontend `LoadBalancer` Service. |
+| **Azure Storage Account** (`stsowniatfstate01`) | Holds Terraform's remote state (persists across pipeline runs). |
+| ~~Azure Database for PostgreSQL~~ | **Not used** — this free-trial subscription has zero Flexible Server capacity in every region tried. Postgres runs in-cluster instead (see §6). |
 
----
-
-## 5. Technology Stack & Frameworks
-
-### LLM Models
-- **Google Gemini (gemini-3.5-flash-lite):** Currently, all 5 specialized agents utilize Gemini 3.5 Flash Lite via `langchain_google_genai`. It was chosen for its high speed, low latency, and massive context window, which is ideal for processing document chunks in parallel. *(Note: The architecture is model-agnostic and supports swapping in Mixtral or LLaMA as defined in earlier blueprints).*
-
-### Backend Details
-- **Framework:** FastAPI (Python 3.11)
-- **Design:** RESTful API architecture with async endpoints for uploading, reviewing, and fetching results.
-- **State Management:** In-memory tracking for active uploads, bridging to persistent storage for completed reviews.
-
-### Frontend Details
-- **Framework:** Next.js 14 (App Router) & React 18
-- **Styling:** Tailwind CSS with Lucide React icons for a modern, responsive UI.
-- **State Management:** Zustand for global state (tracking the current active review).
-- **Data Visualization:** Recharts for rendering risk score charts.
-- **File Handling:** `react-dropzone` for drag-and-drop document uploads.
+Provisioned via **Terraform** (`terraform/`), applied only by the prod pipeline.
 
 ---
 
-## 6. Python Libraries & Their Uses
+## 4. Environments
 
-| Library | Purpose in SOWnia |
-|---------|-------------------|
-| `fastapi` & `uvicorn` | Core web framework and ASGI server for the backend API. |
-| `langgraph` & `langchain` | The agentic orchestration framework to define the state machine, nodes, and edges. |
-| `langchain-google-genai` | The integration package to communicate with Google's Gemini LLMs. |
-| `pydantic` | Data validation, structured LLM output schemas, and configuration management (`pydantic-settings`). |
-| `PyMuPDF` (`fitz`) | Parsing text from uploaded PDFs and generating the heavily customized **Annotated PDFs** with visual highlights and sticky-note comments. |
-| `python-docx` | Extracting raw text and structure from Word Document (.docx) uploads. |
-| `huggingface_hub` | Connecting to Hugging Face Datasets Hub to persist review records in a JSONL file. |
-| `weasyprint` | Generating the clean, printable HTML-to-PDF executive summary reports. |
+Two fully isolated environments share the one AKS cluster, separated by Kubernetes **namespace**:
+
+| | Prod | Dev |
+|---|---|---|
+| Git branch | `main` | `develop` |
+| Pipeline | `azure-pipelines.yml` | `azure-pipelines-dev.yml` |
+| K8s namespace | `default` | `dev` |
+| Helm release | `sownia` | `sownia-dev` |
+| Frontend URL | `http://4.157.55.31:3000` *(pre-auth app; not yet updated)* | `http://48.195.200.241:3000` *(current, tested)* |
+| Postgres | own in-cluster pod | own in-cluster pod |
+| Google OAuth | works (once domain configured) | **not supported** — bare IP fails Google's redirect-URI validation; email/password only |
+
+Workflow: build/test on `develop` → verify on dev URL → merge `develop` → `main` → prod pipeline auto-deploys.
 
 ---
 
-## 7. Deployment Details
+## 5. CI/CD
 
-- **Containerization:** The project includes a multi-container `docker-compose.yml` setup, building separate Docker images for the FastAPI backend and Next.js frontend.
-- **Backend Hosting:** Designed to be deployed on **Hugging Face Spaces** (via Docker SDK), automatically deployed through GitHub Actions.
-- **Frontend Hosting:** Designed for **Vercel**, leveraging Next.js's native edge-caching and deployment capabilities.
-- **Database/Storage:** Relies on **Hugging Face Datasets Hub** as a serverless JSONL database to store historical reviews, eliminating the need for a traditional RDBMS.
-- **CI/CD:** GitHub Actions (`ci.yml`, `deploy.yml`) handles linting (`ruff`), formatting (`black`), type-checking (`mypy`), and testing (`pytest`) before deployment.
+Two independent Azure DevOps pipelines, both auto-triggered on push:
+
+- **Prod** (`main`): Terraform apply → Docker build/push → Helm deploy. Only this pipeline touches cloud infrastructure.
+- **Dev** (`develop`): Docker build/push → Helm deploy (no Terraform stage — dev never touches infra, only app code).
+
+Required pipeline secrets: `GOOGLE_API_KEY`, `HF_TOKEN`, `JWT_SECRET_KEY` (both pipelines); `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` (prod only, for OAuth).
+
+---
+
+## 6. Authentication & Multi-tenancy (new)
+
+Previously the app had **no authentication at all** — every API endpoint was open, and all uploads/reviews were visible to every caller (stored in per-process memory + a single shared file on Hugging Face Datasets).
+
+**Now:**
+- **Email/password** signup and login (bcrypt-hashed passwords).
+- **Google OAuth** (authorization-code flow), prod-only (needs a real HTTPS domain).
+- Session is a JWT in an **httpOnly cookie** — Next.js `middleware.ts` gates protected routes by cookie presence; the backend validates the signature per-request.
+- **Postgres** replaces the in-memory dicts and shared HF file: `users`, `uploaded_files`, `reviews` tables, all foreign-keyed to `user_id`. Every route now requires auth and filters by the current user — **one user can no longer see another user's documents or reviews.**
+- **Postgres runs in-cluster** (a `postgres:16` StatefulSet per namespace) rather than as an Azure managed database, because Azure Database for PostgreSQL Flexible Server has no capacity on this subscription in any region tested. This required zero backend code changes — it's still real Postgres, just self-hosted inside the cluster.
+- DB schema is managed by **Alembic**; migrations run automatically via an init container on every backend rollout.
+
+---
+
+## 7. UI Redesign — "Vivid"
+
+The frontend was restyled from a purple/glassmorphic look to the **Vivid** design system from the project's design-handoff spec:
+
+- **Palette**: dark background (`#0a0a11`), signature gradient (blue → purple → pink → orange), risk colors (HIGH `#FB4E6D`, MEDIUM `#FBBF24`, LOW `#34D399`).
+- **Typography**: Plus Jakarta Sans (headings) + Inter (body), via `next/font`.
+- **Glass cards**: translucent fill + hairline border + heavy blur, matching the handoff spec exactly.
+- **Icons**: all emoji/inline-SVG replaced with `lucide-react` components.
+- Applied to all existing pages/components (Upload, Dashboard, Review Results) plus two new pages (Login, Signup) — restyled in place rather than rebuilt from scratch, so some prototype-only flourishes (animated onboarding loader, hero illustration card) aren't present.
+
+---
+
+## 8. Key fixes made along the way
+
+A running list of real issues hit and resolved during this build (useful troubleshooting history):
+
+- Terraform 403s → free-trial service principal needed provider pre-registration + role grants (owner-only actions).
+- AKS node SKU restrictions → `Standard_B2s` not allowed; moved to `Standard_D2as_v7`.
+- No Terraform remote state → added Azure Storage backend so state persists across pipeline runs.
+- OIDC issuer / node-pool rotation → provider-required config additions.
+- Backend `ModuleNotFoundError` → Docker image layout mismatch with `backend.*` imports.
+- Frontend "Network Error" on upload → browser was calling a build-time-baked wrong host instead of the same-origin proxy.
+- Disk-pressure pod evictions → backend image bloat (unused `sentence-transformers`/`faiss-cpu` pulling in torch+CUDA, ~3GB) + too-small node disk; removed unused deps and bumped disk/node count.
+- Dev signup 500s → (a) dev's backend Service name didn't match the frontend's build-time-baked proxy target — fixed by giving the backend Service a constant name across namespaces; (b) `passlib`/`bcrypt` version incompatibility — pinned `bcrypt==4.0.1`.
+
+---
+
+## 9. Cost management
+
+AKS can be stopped without losing any configuration or data:
+```bash
+az aks stop  --name aks-sownia-prod --resource-group rg-sownia-aks-prod   # pause
+az aks start --name aks-sownia-prod --resource-group rg-sownia-aks-prod   # resume
+```
+This deallocates the VM nodes (the dominant cost) while keeping disks, images, and IPs — a few minutes to resume, no redeploy needed.
+
+---
+
+## 10. Open items / next steps
+
+1. **Merge `develop` → `main`** to bring auth + Postgres + Vivid UI to prod (currently prod still runs the old, pre-auth app).
+2. **Google OAuth for prod**: register a Google Cloud Console OAuth client with a real HTTPS domain (bare IPs aren't accepted); wire `GOOGLE_CLIENT_ID`/`SECRET` into the prod pipeline.
+3. Optional: tighten the Postgres firewall/security posture now that it's in-cluster (currently ClusterIP-only, not exposed — already reasonably locked down).
+4. Optional: further close the visual gap with the original Vivid prototype (animated loaders, hero illustration) if desired.
+
+---
+
+## 11. Repo reference
+
+| Path | Purpose |
+|---|---|
+| `terraform/` | AKS + ACR infra (prod pipeline only) |
+| `helm/sownia/` | Helm chart — `values.yaml` (prod), `values-dev.yaml` (dev overrides), `templates/` |
+| `azure-pipelines.yml` | Prod CI/CD (main branch) |
+| `azure-pipelines-dev.yml` | Dev CI/CD (develop branch) |
+| `backend/` | FastAPI app — `auth/`, `models/`, `alembic/`, `api/routes/` |
+| `frontend/` | Next.js 14 app — `app/`, `components/`, `store/`, `lib/` |
+| `DEPLOYMENT.md` | Detailed Azure setup/troubleshooting notes |

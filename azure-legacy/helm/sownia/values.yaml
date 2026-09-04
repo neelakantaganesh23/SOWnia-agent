@@ -10,6 +10,11 @@ backend:
   service:
     type: ClusterIP
     port: 7860
+  # Google's redirect-URI validation requires HTTPS (or localhost) - point
+  # this at the public, browser-reachable frontend origin, not the
+  # ClusterIP-only backend. Overridden per environment via --set.
+  googleRedirectUri: "https://sownia.yourdomain.com/api/v1/auth/google/callback"
+  frontendBaseUrl: "https://sownia.yourdomain.com"
   resources:
     limits:
       cpu: 1000m
@@ -62,3 +67,24 @@ secrets:
   googleApiKey: "YOUR_GOOGLE_API_KEY"
   hfToken: "YOUR_HF_TOKEN"
   langchainApiKey: "YOUR_LANGCHAIN_API_KEY"
+  jwtSecretKey: "CHANGE_ME"
+  googleClientId: ""
+  googleClientSecret: ""
+
+# In-cluster Postgres (StatefulSet + PVC). DATABASE_URL is built from these
+# in helm/sownia/templates/secret.yaml. The password should be overridden at
+# deploy time via --set postgres.password from a pipeline secret.
+postgres:
+  enabled: true
+  image: "postgres:16"
+  user: "sownia"
+  password: "CHANGE_ME_INTERNAL"
+  database: "sownia"
+  storage: "2Gi"
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 256Mi

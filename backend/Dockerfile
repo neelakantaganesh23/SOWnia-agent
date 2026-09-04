@@ -17,6 +17,10 @@ COPY . ./backend
 # Make /app importable so `import backend` resolves to /app/backend.
 ENV PYTHONPATH=/app
 
+RUN chmod +x /app/backend/start.sh
+
+# 7860 is the local/default port; Render overrides via $PORT (see start.sh).
 EXPOSE 7860
 
-CMD ["uvicorn", "backend.api.main:app", "--host", "0.0.0.0", "--port", "7860"]
+# start.sh runs migrations then binds uvicorn to ${PORT:-7860}.
+CMD ["/app/backend/start.sh"]

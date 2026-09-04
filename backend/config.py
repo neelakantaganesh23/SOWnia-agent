@@ -32,6 +32,18 @@ class Settings(BaseSettings):
     # Backend URL
     NEXT_PUBLIC_API_URL: str = "http://localhost:8000"
 
+    # Auth / Database
+    DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/sownia"
+    SECRET_KEY: str = ""
+    JWT_ALGORITHM: str = "HS256"
+    JWT_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
+
+    # Google OAuth
+    GOOGLE_CLIENT_ID: str = ""
+    GOOGLE_CLIENT_SECRET: str = ""
+    GOOGLE_REDIRECT_URI: str = "http://localhost:8000/api/v1/auth/google/callback"
+    FRONTEND_BASE_URL: str = "http://localhost:3000"
+
     @property
     def allowed_origins_list(self) -> List[str]:
         """Parse ALLOWED_ORIGINS comma-separated string into a list."""

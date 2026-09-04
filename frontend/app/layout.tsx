@@ -1,6 +1,25 @@
 import type { Metadata } from "next";
+import { Inter, Plus_Jakarta_Sans } from "next/font/google";
 import Link from "next/link";
+import AuthNav from "@/components/layout/AuthNav";
 import "./globals.css";
+
+// Vivid design spec: Plus Jakarta Sans for headings/display/numbers,
+// Inter for body/UI text. Exposed as CSS variables consumed by
+// tailwind.config.ts's fontFamily.display/sans.
+const plusJakarta = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  weight: ["500", "600", "700", "800"],
+  variable: "--font-plus-jakarta",
+  display: "swap",
+});
+
+const inter = Inter({
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  variable: "--font-inter",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "SOWnia — AI-Powered SOW Review",
@@ -14,7 +33,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" className={`dark ${plusJakarta.variable} ${inter.variable}`}>
       <body className="min-h-screen flex flex-col">
         {/* Navigation Header */}
         <header className="sticky top-0 z-50 w-full border-b border-gray-200/10 bg-surface-950/80 backdrop-blur-xl">
@@ -46,6 +65,8 @@ export default function RootLayout({
                 <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse-slow" />
                 <span className="text-xs text-gray-500">API Connected</span>
               </div>
+              <div className="ml-3 w-px h-6 bg-gray-700" />
+              <AuthNav />
             </nav>
           </div>
         </header>

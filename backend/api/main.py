@@ -11,7 +11,7 @@ from fastapi.responses import RedirectResponse
 
 from backend.api.middleware.cors import setup_cors
 from backend.api.middleware.logging import setup_logging
-from backend.api.routes import upload, review, results
+from backend.api.routes import auth, upload, review, results
 from backend.config import settings
 
 # Configure module logger
@@ -33,6 +33,7 @@ setup_cors(app)
 setup_logging(app)
 
 # Register routes
+app.include_router(auth.router, prefix="/api/v1", tags=["Auth"])
 app.include_router(upload.router, prefix="/api/v1", tags=["Upload"])
 app.include_router(review.router, prefix="/api/v1", tags=["Review"])
 app.include_router(results.router, prefix="/api/v1", tags=["Results"])

@@ -14,17 +14,31 @@ langchain-community
 langgraph
 langsmith
 huggingface_hub
-sentence-transformers
+# NOTE: sentence-transformers and faiss-cpu removed - they were unused
+# (the SemanticChunker is pure regex/string logic, no embeddings) and
+# pulled in torch + NVIDIA CUDA libs, bloating the image to ~3GB and
+# overflowing the node disk. Removing them cuts the image dramatically.
 
 # Document Parsing
 PyMuPDF
 python-docx
 
-# Vector Store
-faiss-cpu
-
 # Output
 weasyprint
+
+# Auth & Database
+sqlalchemy
+alembic
+psycopg2-binary
+python-jose[cryptography]
+passlib[bcrypt]
+# Pin bcrypt <4.1: passlib 1.7.4 reads bcrypt.__about__.__version__, which
+# bcrypt 4.1+ removed - the resulting backend-detection failure surfaces as a
+# spurious "password cannot be longer than 72 bytes" 500 on signup/login.
+bcrypt==4.0.1
+email-validator
+# Google OAuth uses httpx directly (already a dependency above) - no
+# separate OAuth library needed.
 
 # Testing
 pytest

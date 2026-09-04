@@ -12,14 +12,15 @@ import {
   FullReviewResult,
   ReviewListResponse,
   ApiError,
+  UserResponse,
 } from "./types";
 
-// API base URL. Default to "" so browser calls are SAME-ORIGIN relative
-// paths (e.g. /api/v1/upload). next.config.js rewrites /api/* and /health
-// server-side to the in-cluster backend, so the browser never needs to
-// resolve the backend host directly. (NEXT_PUBLIC_* is baked at build time;
-// hardcoding the cluster host here would break browser requests.)
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "";
+// ALWAYS same-origin relative (empty base). The browser calls /api/v1/... on
+// its own origin (Vercel), and next.config.js proxies that server-side to the
+// backend (Render) via BACKEND_INTERNAL_URL. Keeping this empty is what makes
+// the auth cookie first-party to the frontend domain - if this pointed at the
+// backend host directly, calls would be cross-origin and the cookie would break.
+const API_BASE_URL = "";
 
 // Create Axios instance with defaults
 const apiClient: AxiosInstance = axios.create({
@@ -28,6 +29,8 @@ const apiClient: AxiosInstance = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
+  // Send the httpOnly access_token cookie on same-origin requests.
+  withCredentials: true,
 });
 
 // ─── Request Interceptor ────────────────────────────────────────────────────
@@ -55,6 +58,20 @@ apiClient.interceptors.response.use(
     const status = error.response?.status;
     const detail = error.response?.data?.detail || error.message;
     console.error(`[API Error] ${status}: ${detail}`);
+
+    // Session missing/expired - bounce to login (skip if already there or
+    // the request itself was a login/signup attempt, which surfaces its
+    // own inline error instead of a redirect).
+    if (
+      status === 401 &&
+      typeof window !== "undefined" &&
+      !window.location.pathname.startsWith("/login") &&
+      !error.config?.url?.includes("/auth/login") &&
+      !error.config?.url?.includes("/auth/signup")
+    ) {
+      window.location.href = "/login";
+    }
+
     return Promise.reject(error);
   }
 );
@@ -160,6 +177,46 @@ export async function checkHealth(): Promise<{
 }> {
   const response = await axios.get(`${API_BASE_URL}/health`);
   return response.data;
+}
+
+// ─── Auth Functions ──────────────────────────────────────────────────────────
+
+export async function signup(
+  email: string,
+  password: string,
+  fullName?: string
+): Promise<UserResponse> {
+  const response = await apiClient.post<UserResponse>("/auth/signup", {
+    email,
+    password,
+    full_name: fullName,
+  });
+  return response.data;
+}
+
+export async function login(
+  email: string,
+  password: string
+): Promise<UserResponse> {
+  const response = await apiClient.post<UserResponse>("/auth/login", {
+    email,
+    password,
+  });
+  return response.data;
+}
+
+export async function logout(): Promise<void> {
+  await apiClient.post("/auth/logout");
+}
+
+export async function fetchCurrentUser(): Promise<UserResponse> {
+  const response = await apiClient.get<UserResponse>("/auth/me");
+  return response.data;
+}
+
+/** Full-page redirect into the backend's Google OAuth flow. */
+export function googleLoginUrl(): string {
+  return `${API_BASE_URL}/api/v1/auth/google/login`;
 }
 
 export default apiClient;

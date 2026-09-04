@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --grad: linear-gradient(120deg,#38BDF8 0%,#A855F7 34%,#EC4899 66%,#FB923C 100%);
+      --bg:#0a0a11; --ink:#f4f5fb; --mut:rgba(244,245,251,.62); --mut2:rgba(244,245,251,.4);
+      --glass:rgba(255,255,255,.045); --glassbrd:rgba(255,255,255,.11);
+      --hi:#FB4E6D; --md:#FBBF24; --lo:#34D399;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+    h1,h2,h3,h4,.dsp{font-family:'Plus Jakarta Sans','Inter',sans-serif;letter-spacing:-.02em}
+    .grad-txt{background:var(--grad);background-size:200% 200%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:gradShift 8s ease infinite}
+    .grad-btn{position:relative;background:var(--grad);background-size:200% 200%;animation:gradShift 8s ease infinite;color:#0a0a11;border:none;font-weight:700;box-shadow:0 8px 30px -6px rgba(168,85,247,.55);transition:transform .2s,box-shadow .2s}
+    .grad-btn:hover{transform:translateY(-2px);box-shadow:0 14px 40px -6px rgba(236,72,153,.6)}
+    .grad-btn:active{transform:translateY(0)}
+    .glass{background:var(--glass);border:1px solid var(--glassbrd);backdrop-filter:blur(var(--blur,18px));-webkit-backdrop-filter:blur(var(--blur,18px))}
+    .gbtn2{background:rgba(255,255,255,.05);border:1px solid var(--glassbrd);color:var(--ink);font-weight:600;transition:background .2s,border-color .2s,transform .2s}
+    .gbtn2:hover{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.24);transform:translateY(-2px)}
+    .lift{transition:transform .3s cubic-bezier(.2,.7,.3,1),box-shadow .3s,border-color .3s}
+    .lift:hover{transform:translateY(-6px);border-color:rgba(255,255,255,.25);box-shadow:0 24px 60px -20px rgba(0,0,0,.7)}
+    .in-field{width:100%;height:46px;padding:0 14px;font:500 14px 'Inter',sans-serif;color:var(--ink);background:rgba(255,255,255,.04);border:1px solid var(--glassbrd);border-radius:12px;outline:none;transition:border-color .2s,box-shadow .2s}
+    .in-field::placeholder{color:var(--mut2)}
+    .in-field:focus{border-color:#A855F7;box-shadow:0 0 0 3px rgba(168,85,247,.22)}
+    .blob{position:absolute;border-radius:50%;filter:blur(70px);opacity:.55;pointer-events:none}
+    .navlink{color:var(--mut);text-decoration:none;font-size:14px;font-weight:500;padding:7px 12px;border-radius:9px;transition:color .2s,background .2s;white-space:nowrap}
+    .navlink:hover{color:var(--ink);background:rgba(255,255,255,.06)}
+    .navlink[aria-current='page']{color:var(--ink);background:rgba(255,255,255,.08)}
+    .find-row{cursor:pointer;transition:background .18s}
+    .find-row:hover{background:rgba(255,255,255,.04)}
+    .chev{transition:transform .22s}
+    @keyframes gradShift{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+    @keyframes meshA{0%{transform:translate(0,0) scale(1)}50%{transform:translate(80px,-60px) scale(1.25)}100%{transform:translate(0,0) scale(1)}}
+    @keyframes meshB{0%{transform:translate(0,0) scale(1.1)}50%{transform:translate(-90px,50px) scale(.85)}100%{transform:translate(0,0) scale(1.1)}}
+    @keyframes meshC{0%{transform:translate(0,0)}50%{transform:translate(60px,70px)}100%{transform:translate(0,0)}}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(26px)}to{opacity:1;transform:none}}
+    @keyframes floatY{0%{transform:translateY(0) rotate(-1.2deg)}50%{transform:translateY(-16px) rotate(-1.2deg)}100%{transform:translateY(0) rotate(-1.2deg)}}
+    @keyframes floatChip{0%{transform:translateY(0)}50%{transform:translateY(-12px)}100%{transform:translateY(0)}}
+    @keyframes fillBar{from{width:0}to{width:var(--w)}}
+    @keyframes barLoop{0%{width:0}60%{width:var(--w)}100%{width:var(--w)}}
+    @keyframes ringDraw{from{stroke-dashoffset:327}to{stroke-dashoffset:var(--off,120)}}
+    @keyframes revLine{0%{opacity:0;transform:translateY(40px);filter:blur(8px)}100%{opacity:1;transform:none;filter:blur(0)}}
+    @keyframes chipPop{0%{opacity:0;transform:scale(.7) translateY(10px)}60%{transform:scale(1.06)}100%{opacity:1;transform:scale(1) translateY(0)}}
+    @keyframes prog{from{width:0}to{width:100%}}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    @keyframes pulseDot{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(52,211,153,.5)}50%{opacity:.6;box-shadow:0 0 0 6px rgba(52,211,153,0)}}
+    @keyframes shine{0%{background-position:-160% 0}100%{background-position:260% 0}}
+    @keyframes growBar{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+    .fu{animation:fadeUp .7s cubic-bezier(.2,.7,.3,1) both}
+    .mo-calm .blob{animation-duration:36s!important}
+    .mo-calm .floaty{animation-duration:12s!important}
+    .mo-calm .floatie{animation-duration:11s!important}
+    .mo-calm .grad-txt,.mo-calm .grad-btn{animation-duration:20s!important}
+    .mo-still .blob,.mo-still .floaty,.mo-still .floatie,.mo-still .pulse{animation:none!important}
+    .mo-still .grad-txt,.mo-still .grad-btn{animation:none!important}
+  </style>
+</helmet>
+
+<div class="{{ motionClass }}" style="min-height:100vh;position:relative;overflow:hidden;{{ themeVars }}">
+<!-- animated mesh background (all screens) -->
+<div style="position:fixed;inset:0;z-index:0;overflow:hidden">
+  <div class="blob" style="width:520px;height:520px;background:#38BDF8;top:-140px;left:-120px;animation:meshA 16s ease-in-out infinite"></div>
+  <div class="blob" style="width:560px;height:560px;background:#A855F7;top:20%;right:-160px;animation:meshB 19s ease-in-out infinite"></div>
+  <div class="blob" style="width:480px;height:480px;background:#EC4899;bottom:-160px;left:24%;animation:meshC 22s ease-in-out infinite"></div>
+  <div class="blob" style="width:360px;height:360px;background:#FB923C;bottom:8%;right:14%;opacity:.4;animation:meshA 24s ease-in-out infinite"></div>
+</div>
+<div style="position:relative;z-index:1">
+
+<!-- ══════════ LOGIN ══════════ -->
+<sc-if value="{{ isLogin }}" hint-placeholder-val="{{ true }}">
+<div class="fu" style="min-height:100vh;display:grid;place-items:center;padding:40px 20px">
+  <div class="glass" style="width:100%;max-width:440px;border-radius:26px;padding:44px 40px;box-shadow:0 40px 90px -30px rgba(0,0,0,.8)">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:30px">
+      <div style="width:42px;height:42px;border-radius:13px;background:var(--grad);background-size:200% 200%;animation:gradShift 8s ease infinite;display:grid;place-items:center;font:800 20px 'Plus Jakarta Sans';color:#0a0a11">S</div>
+      <span style="font:800 22px 'Plus Jakarta Sans'">SOWnia</span>
+    </div>
+    <h1 style="font-size:30px;font-weight:800;margin:0 0 8px;line-height:1.12">Welcome back</h1>
+    <p style="color:var(--mut);font-size:14.5px;margin:0 0 28px">Sign in to run a multi-agent review in minutes.</p>
+
+    <button class="gbtn2" onClick="{{ enter }}" style="width:100%;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;gap:10px;cursor:pointer;font-size:14px">
+      <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.76h3.57c2.08-1.92 3.28-4.74 3.28-8.09Z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.76c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A11 11 0 0 0 12 23Z"/><path fill="#FBBC05" d="M5.84 14.11a6.6 6.6 0 0 1 0-4.22V7.05H2.18a11 11 0 0 0 0 9.9l3.66-2.84Z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.05l3.66 2.84C6.71 7.3 9.14 5.38 12 5.38Z"/></svg>
+      Continue with Google
+    </button>
+
+    <div style="display:flex;align-items:center;gap:12px;margin:22px 0">
+      <span style="flex:1;height:1px;background:var(--glassbrd)"></span>
+      <span style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--mut2)">or</span>
+      <span style="flex:1;height:1px;background:var(--glassbrd)"></span>
+    </div>
+
+    <label style="display:block;font-size:12.5px;color:var(--mut);margin-bottom:7px">Work email</label>
+    <input class="in-field" type="email" placeholder="you@company.com" style="margin-bottom:16px">
+    <div style="display:flex;justify-content:space-between;margin-bottom:7px">
+      <label style="font-size:12.5px;color:var(--mut)">Password</label>
+      <a href="#" style="font-size:12px;color:#C084FC;text-decoration:none">Forgot?</a>
+    </div>
+    <input class="in-field" type="password" placeholder="••••••••••" style="margin-bottom:24px">
+
+    <button class="grad-btn" onClick="{{ enter }}" style="width:100%;height:48px;border-radius:12px;font-size:15px;cursor:pointer">Sign in &amp; review →</button>
+    <button onClick="{{ enter }}" style="width:100%;height:42px;margin-top:10px;background:none;border:none;color:var(--mut);font:600 13px 'Inter';cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M22 6l-10 7L2 6"/><rect x="2" y="4" width="20" height="16" rx="2"/></svg>
+      Email me a magic link instead
+    </button>
+    <p style="text-align:center;font-size:13px;color:var(--mut);margin:26px 0 0">New here? <a href="#" onClick="{{ enter }}" style="color:#C084FC;text-decoration:none;font-weight:600">Request access</a></p>
+  </div>
+</div>
+</sc-if>
+
+<!-- ══════════ TRANSITION ══════════ -->
+<sc-if value="{{ isTransition }}" hint-placeholder-val="{{ false }}">
+<div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px;text-align:center">
+  <div style="font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--mut);margin-bottom:26px;opacity:0;animation:revLine .7s ease .05s both">Setting up your workspace</div>
+  <h1 style="font-size:clamp(38px,7vw,80px);font-weight:800;line-height:1.02;margin:0">
+    <span style="display:block;opacity:0;animation:revLine .9s cubic-bezier(.2,.7,.3,1) .25s both" class="grad-txt">Review SOW Documents</span>
+    <span style="display:block;opacity:0;animation:revLine .9s cubic-bezier(.2,.7,.3,1) .7s both">in Minutes, Not Days</span>
+  </h1>
+
+  <div style="display:flex;flex-wrap:wrap;gap:12px;justify-content:center;margin:44px 0 34px">
+    <sc-for list="{{ chips }}" as="c" hint-placeholder-count="5">
+      <div class="glass" style="display:flex;align-items:center;gap:9px;padding:9px 16px;border-radius:999px;opacity:0;animation:chipPop .5s cubic-bezier(.2,.9,.3,1.2) {{ c.delay }} both">
+        <span style="width:8px;height:8px;border-radius:50%;background:{{ c.color }}"></span>
+        <span style="font-size:13px;font-weight:600">{{ c.label }}</span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="{{ c.color }}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+      </div>
+    </sc-for>
+  </div>
+
+  <div style="width:min(320px,80vw);height:4px;border-radius:4px;background:rgba(255,255,255,.1);overflow:hidden">
+    <div style="height:100%;border-radius:4px;background:var(--grad);background-size:200% 200%;animation:prog 3.1s cubic-bezier(.5,0,.2,1) .3s both,gradShift 8s ease infinite"></div>
+  </div>
+</div>
+</sc-if>
+
+<!-- ══════════ APP CHROME ══════════ -->
+<sc-if value="{{ isApp }}" hint-placeholder-val="{{ false }}">
+<div>
+  <div style="position:sticky;top:0;z-index:20">
+    <nav class="glass" style="max-width:1180px;margin:16px auto 0;border-radius:16px;display:flex;align-items:center;gap:8px;padding:11px 18px">
+      <div style="display:flex;align-items:center;gap:11px;margin-right:auto;cursor:pointer" onClick="{{ goUpload }}">
+        <div style="width:34px;height:34px;border-radius:11px;background:var(--grad);background-size:200% 200%;animation:gradShift 8s ease infinite;display:grid;place-items:center;font:800 17px 'Plus Jakarta Sans';color:#0a0a11">S</div>
+        <span style="font:800 19px 'Plus Jakarta Sans'">SOWnia</span>
+      </div>
+      <a href="#" class="navlink" onClick="{{ goUpload }}" aria-current="{{ uploadCurrent }}">Upload</a>
+      <a href="#" class="navlink" onClick="{{ goReview }}" aria-current="{{ reviewCurrent }}">Review</a>
+      <a href="#" class="navlink" onClick="{{ goDashboard }}" aria-current="{{ dashboardCurrent }}">Dashboard</a>
+      <span style="width:1px;height:20px;background:var(--glassbrd);margin:0 4px"></span>
+      <span style="display:inline-flex;align-items:center;gap:7px;font-size:12px;color:var(--mut);margin-right:6px;white-space:nowrap"><span class="pulse" style="width:8px;height:8px;border-radius:50%;background:var(--lo);animation:pulseDot 2.5s infinite"></span>API Connected</span>
+      <a href="#" class="navlink" onClick="{{ signOut }}" style="font-size:12px">Sign out</a>
+    </nav>
+  </div>
+
+  <!-- ── UPLOAD / LANDING ── -->
+  <sc-if value="{{ isUpload }}" hint-placeholder-val="{{ true }}">
+  <div style="max-width:1180px;margin:0 auto;padding:56px 24px 90px">
+    <div style="display:grid;grid-template-columns:1.05fr .95fr;gap:48px;align-items:center">
+      <!-- copy -->
+      <div>
+        <div class="glass fu" style="display:inline-flex;align-items:center;gap:9px;padding:7px 14px;border-radius:999px;margin-bottom:24px">
+          <span style="width:8px;height:8px;border-radius:50%;background:var(--grad)"></span>
+          <span style="font-size:12.5px;font-weight:600;color:var(--mut)">AI-Powered Multi-Agent Review</span>
+        </div>
+        <h1 class="fu" style="font-size:clamp(40px,5vw,64px);font-weight:800;line-height:1.03;margin:0 0 20px;animation-delay:.05s">
+          Review SOW Documents<br><span class="grad-txt">in Minutes, Not Days</span>
+        </h1>
+        <p class="fu" style="font-size:17px;line-height:1.6;color:var(--mut);max-width:52ch;margin:0 0 30px;animation-delay:.12s">Upload your Statement of Work and let five specialist agents examine it across legal, financial, technical, risk, and delivery domains — simultaneously, each finding cited to the page.</p>
+        <div class="fu" style="display:flex;gap:14px;flex-wrap:wrap;animation-delay:.2s">
+          <button class="grad-btn" onClick="{{ goReview }}" style="height:52px;padding:0 26px;border-radius:14px;font-size:15px;cursor:pointer;display:inline-flex;align-items:center;gap:9px">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0a0a11" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4"/><path d="M6 10l6-6 6 6"/><path d="M4 20h16"/></svg>
+            Upload &amp; review
+          </button>
+          <button class="gbtn2" style="height:52px;padding:0 24px;border-radius:14px;font-size:15px;cursor:pointer">See how it works</button>
+        </div>
+        <div class="fu" style="display:flex;gap:30px;margin-top:34px;animation-delay:.28s">
+          <div><div style="font:800 26px 'Plus Jakarta Sans'" class="grad-txt">5</div><div style="font-size:12.5px;color:var(--mut)">specialist agents</div></div>
+          <div><div style="font:800 26px 'Plus Jakarta Sans'" class="grad-txt">~3 min</div><div style="font-size:12.5px;color:var(--mut)">per document</div></div>
+          <div><div style="font:800 26px 'Plus Jakarta Sans'" class="grad-txt">100%</div><div style="font-size:12.5px;color:var(--mut)">page-cited</div></div>
+        </div>
+      </div>
+
+      <!-- animated mockup -->
+      <div style="position:relative;perspective:1400px">
+        <div class="glass floaty" style="border-radius:22px;padding:20px;animation:floatY 7s ease-in-out infinite;box-shadow:0 50px 100px -40px rgba(0,0,0,.85)">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+            <div style="display:flex;align-items:center;gap:9px"><span style="width:26px;height:26px;border-radius:8px;background:var(--grad)"></span><span style="font:700 14px 'Plus Jakarta Sans'">Review results</span></div>
+            <span style="font-size:10px;padding:3px 9px;border-radius:999px;background:rgba(251,78,109,.16);color:#FB8DA3;font-weight:600">HIGH · 6.8</span>
+          </div>
+          <div style="display:flex;gap:14px;align-items:center;padding:12px;border-radius:14px;background:rgba(255,255,255,.03);margin-bottom:14px">
+            <svg width="66" height="66" viewBox="0 0 120 120" style="transform:rotate(-90deg);flex:none">
+              <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="9"/>
+              <circle cx="60" cy="60" r="52" fill="none" stroke="url(#mg)" stroke-width="9" stroke-linecap="round" stroke-dasharray="327" style="animation:ringDraw 2.4s cubic-bezier(.4,0,.2,1) .4s both;--off:105"/>
+              <defs><linearGradient id="mg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#EC4899"/><stop offset="1" stop-color="#FB923C"/></linearGradient></defs>
+            </svg>
+            <div style="flex:1">
+              <div style="font-size:11px;color:var(--mut);margin-bottom:5px">Executive summary</div>
+              <div style="height:7px;border-radius:5px;background:rgba(255,255,255,.09);margin-bottom:6px;width:100%"></div>
+              <div style="height:7px;border-radius:5px;background:rgba(255,255,255,.09);margin-bottom:6px;width:82%"></div>
+              <div style="height:7px;border-radius:5px;background:rgba(255,255,255,.09);width:64%"></div>
+            </div>
+          </div>
+          <sc-for list="{{ mock }}" as="m" hint-placeholder-count="4">
+            <div style="display:flex;align-items:center;gap:11px;padding:9px 4px">
+              <span style="width:28px;height:28px;flex:none;border-radius:8px;display:grid;place-items:center;font:700 12px 'Plus Jakarta Sans';color:{{ m.color }};background:{{ m.bg }}">{{ m.mono }}</span>
+              <div style="flex:1">
+                <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:5px"><span style="color:var(--ink)">{{ m.label }}</span><span style="color:var(--mut2)">{{ m.pct }}%</span></div>
+                <div style="height:5px;border-radius:5px;background:rgba(255,255,255,.08);overflow:hidden"><div style="height:100%;border-radius:5px;background:{{ m.color }};--w:{{ m.pct }}%;animation:barLoop 4.5s ease-in-out {{ m.delay }} infinite"></div></div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+        <!-- floating chips -->
+        <div class="glass floatie" style="position:absolute;top:-18px;right:-10px;padding:8px 13px;border-radius:12px;display:flex;align-items:center;gap:8px;animation:floatChip 5s ease-in-out infinite">
+          <span style="width:7px;height:7px;border-radius:50%;background:var(--lo)"></span><span style="font-size:12px;font-weight:600">3 agents done</span>
+        </div>
+        <div class="glass floatie" style="position:absolute;bottom:-16px;left:-14px;padding:8px 13px;border-radius:12px;display:flex;align-items:center;gap:8px;animation:floatChip 6.5s ease-in-out .8s infinite">
+          <span style="font-size:12px;font-weight:700" class="grad-txt">+ Annotated PDF</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- feature bento -->
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:80px">
+      <sc-for list="{{ features }}" as="f" hint-placeholder-count="3">
+        <div class="glass lift" style="padding:26px;border-radius:20px">
+          <div style="width:46px;height:46px;border-radius:13px;background:{{ f.bg }};display:grid;place-items:center;margin-bottom:18px;color:{{ f.color }}" data-om-raster>{{ f.iconEl }}</div>
+          <h3 style="font-size:19px;font-weight:700;margin:0 0 8px">{{ f.title }}</h3>
+          <p style="font-size:14px;line-height:1.6;color:var(--mut);margin:0">{{ f.desc }}</p>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+  </sc-if>
+
+  <!-- ── REVIEW ── -->
+  <sc-if value="{{ isReview }}" hint-placeholder-val="{{ false }}">
+  <div class="fu" style="max-width:1180px;margin:0 auto;padding:40px 24px 90px">
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:20px;margin-bottom:26px">
+      <div>
+        <div style="font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#C084FC;margin-bottom:8px">Review complete</div>
+        <h1 style="font-size:40px;font-weight:800;margin:0 0 8px">Review results</h1>
+        <p style="font-size:13px;color:var(--mut);margin:0">{{ filename }} · {{ timestamp }}</p>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="gbtn2" style="height:42px;padding:0 16px;border-radius:11px;cursor:pointer;display:inline-flex;align-items:center;gap:7px;font-size:13.5px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3"/><path d="M7 10l5 5 5-5"/><path d="M4 21h16"/></svg>JSON</button>
+        <button class="gbtn2" style="height:42px;padding:0 16px;border-radius:11px;cursor:pointer;display:inline-flex;align-items:center;gap:7px;font-size:13.5px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3"/><path d="M7 10l5 5 5-5"/><path d="M4 21h16"/></svg>PDF report</button>
+        <button class="grad-btn" style="height:42px;padding:0 18px;border-radius:11px;cursor:pointer;display:inline-flex;align-items:center;gap:7px;font-size:13.5px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#0a0a11" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>Annotated PDF</button>
+      </div>
+    </div>
+
+    <!-- overall risk -->
+    <div class="glass" style="border-radius:22px;padding:30px;display:grid;grid-template-columns:auto 1fr;gap:40px;align-items:center;margin-bottom:26px">
+      <div style="text-align:center">
+        <div style="position:relative;width:152px;height:152px">
+          <svg width="152" height="152" viewBox="0 0 120 120" style="transform:rotate(-90deg)">
+            <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="7"/>
+            <circle cx="60" cy="60" r="52" fill="none" stroke="url(#rg)" stroke-width="7" stroke-linecap="round" stroke-dasharray="327" style="animation:ringDraw 1.8s cubic-bezier(.4,0,.2,1) .2s both;--off:105"/>
+            <defs><linearGradient id="rg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#EC4899"/><stop offset="1" stop-color="#FB923C"/></linearGradient></defs>
+          </svg>
+          <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center">
+            <span style="font:800 42px 'Plus Jakarta Sans'">{{ overallScore }}</span>
+            <span style="font-size:11px;color:var(--mut2)">out of 10.0</span>
+          </div>
+        </div>
+        <div style="display:inline-flex;align-items:center;gap:7px;margin-top:12px;padding:5px 15px;border-radius:999px;background:rgba(251,78,109,.16);color:#FB8DA3;font-size:12px;font-weight:700;letter-spacing:.05em">{{ overallLevel }} RISK</div>
+      </div>
+      <div>
+        <div style="font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#C084FC;margin-bottom:12px">Executive summary</div>
+        <p style="font-size:15.5px;line-height:1.72;margin:0 0 20px;color:color-mix(in srgb,var(--ink) 88%,transparent);max-width:70ch">{{ summary }}</p>
+        <div style="display:flex;gap:32px;font-size:13px;color:var(--mut)">
+          <div><span style="font:800 24px 'Plus Jakarta Sans';color:var(--ink)">{{ totalFindings }}</span>&nbsp; findings</div>
+          <div><span style="font:800 24px 'Plus Jakarta Sans';color:var(--hi)">{{ highCount }}</span>&nbsp; high risk</div>
+          <div><span style="font:800 24px 'Plus Jakarta Sans';color:var(--ink)">5</span>&nbsp; agents</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- agent cards -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px">
+      <sc-for list="{{ agents }}" as="a" hint-placeholder-count="4">
+        <div class="glass lift" style="border-radius:20px;overflow:hidden">
+          <div style="height:3px;background:{{ a.color }}"></div>
+          <div style="padding:20px 22px 16px;border-bottom:1px solid var(--glassbrd)">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px">
+              <div style="display:flex;gap:12px;align-items:center">
+                <span style="width:40px;height:40px;border-radius:12px;display:grid;place-items:center;font:800 17px 'Plus Jakarta Sans';color:{{ a.color }};background:{{ a.bg }}">{{ a.monogram }}</span>
+                <div><h3 style="font-size:18px;font-weight:700;margin:0;line-height:1.1">{{ a.label }}</h3><div style="font-size:12px;color:var(--mut2)">{{ a.findingCount }} findings</div></div>
+              </div>
+              <span style="padding:4px 11px;border-radius:999px;background:{{ a.bg }};color:{{ a.color }};font-size:10px;font-weight:700;letter-spacing:.06em">{{ a.riskLevel }}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--mut);margin-bottom:6px"><span>Agent confidence</span><span>{{ a.confidencePct }}%</span></div>
+            <div style="height:5px;border-radius:5px;background:rgba(255,255,255,.08);overflow:hidden"><div style="height:100%;border-radius:5px;background:var(--grad);background-size:200% 200%;width:{{ a.confidencePct }}%;animation:gradShift 8s ease infinite"></div></div>
+          </div>
+          <div style="padding:6px 12px 12px">
+            <sc-for list="{{ a.findings }}" as="f" hint-placeholder-count="2">
+              <div style="border-bottom:1px solid var(--glassbrd)">
+                <div class="find-row" onClick="{{ f.toggle }}" style="display:flex;gap:11px;align-items:flex-start;padding:14px 10px;border-radius:10px">
+                  <svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="{{ f.color }}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="margin-top:3px;flex:none;transform:rotate({{ f.chevRot }})"><path d="M9 6l6 6-6 6"/></svg>
+                  <p style="flex:1;font-size:13.5px;line-height:1.55;margin:0;color:color-mix(in srgb,var(--ink) 90%,transparent)">{{ f.text }}</p>
+                  <span style="flex:none;padding:2px 9px;border-radius:999px;background:{{ f.bg }};color:{{ f.color }};font-size:9.5px;font-weight:700;letter-spacing:.05em">{{ f.riskLevel }}</span>
+                </div>
+                <sc-if value="{{ f.isExpanded }}" hint-placeholder-val="{{ false }}">
+                  <div class="fu" style="padding:2px 10px 18px 36px;animation-duration:.4s">
+                    <div style="font-size:11px;color:var(--mut2);margin-bottom:12px">{{ f.page }} · confidence {{ f.confidencePct }}%</div>
+                    <div style="border-left:2px solid #C084FC;padding:2px 0 2px 14px;margin-bottom:14px">
+                      <div style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#C084FC;margin-bottom:5px">Source text</div>
+                      <p style="font-size:13.5px;font-style:italic;line-height:1.55;margin:0;color:color-mix(in srgb,var(--ink) 78%,transparent)">"{{ f.source }}"</p>
+                    </div>
+                    <div style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#C084FC;margin-bottom:5px">Recommendation</div>
+                    <p style="font-size:13px;line-height:1.6;margin:0;color:var(--mut)">{{ f.recommendation }}</p>
+                  </div>
+                </sc-if>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+  </sc-if>
+
+  <!-- ── DASHBOARD ── -->
+  <sc-if value="{{ isDashboard }}" hint-placeholder-val="{{ false }}">
+  <div class="fu" style="max-width:1180px;margin:0 auto;padding:40px 24px 90px">
+    <div style="margin-bottom:28px">
+      <div style="font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#C084FC;margin-bottom:8px">Overview</div>
+      <h1 style="font-size:40px;font-weight:800;margin:0 0 6px">Dashboard</h1>
+      <p style="font-size:14px;color:var(--mut);margin:0">Review history and risk analytics across all your SOW reviews.</p>
+    </div>
+
+    <!-- stat cards -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:22px">
+      <sc-for list="{{ stats }}" as="s" hint-placeholder-count="4">
+        <div class="glass lift" style="padding:22px;border-radius:18px;position:relative;overflow:hidden">
+          <div style="position:absolute;top:0;left:0;right:0;height:3px;background:{{ s.color }}"></div>
+          <div style="font-size:12.5px;color:var(--mut);margin-bottom:10px">{{ s.label }}</div>
+          <div style="font:800 38px 'Plus Jakarta Sans';line-height:1;color:{{ s.color }}">{{ s.value }}</div>
+        </div>
+      </sc-for>
+    </div>
+
+    <!-- chart + filter -->
+    <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:22px">
+      <div class="glass" style="padding:24px;border-radius:20px">
+        <h3 style="font-size:17px;font-weight:700;margin:0 0 20px">Risk distribution</h3>
+        <div style="display:flex;align-items:flex-end;gap:26px;height:180px;padding:0 8px">
+          <sc-for list="{{ bars }}" as="b" hint-placeholder-count="3">
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%">
+              <div style="font:800 18px 'Plus Jakarta Sans';color:{{ b.color }};margin-bottom:8px">{{ b.count }}</div>
+              <div style="width:100%;max-width:96px;height:{{ b.h }};min-height:6px;border-radius:10px 10px 0 0;background:{{ b.color }};box-shadow:0 0 30px -6px {{ b.color }};transform-origin:bottom;animation:growBar .9s cubic-bezier(.2,.8,.3,1) both"></div>
+              <div style="font-size:12px;color:var(--mut);margin-top:10px;letter-spacing:.05em">{{ b.level }}</div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+      <div class="glass" style="padding:24px;border-radius:20px">
+        <h3 style="font-size:17px;font-weight:700;margin:0 0 16px">Filter by risk</h3>
+        <div style="display:flex;flex-direction:column;gap:9px">
+          <button class="gbtn2" style="height:44px;border-radius:12px;text-align:left;padding:0 16px;cursor:pointer;background:rgba(168,85,247,.14);border-color:rgba(168,85,247,.4);color:var(--ink)">All reviews</button>
+          <button class="gbtn2" style="height:44px;border-radius:12px;text-align:left;padding:0 16px;cursor:pointer;display:flex;align-items:center;gap:9px"><span style="width:9px;height:9px;border-radius:50%;background:var(--hi)"></span>High risk</button>
+          <button class="gbtn2" style="height:44px;border-radius:12px;text-align:left;padding:0 16px;cursor:pointer;display:flex;align-items:center;gap:9px"><span style="width:9px;height:9px;border-radius:50%;background:var(--md)"></span>Medium risk</button>
+          <button class="gbtn2" style="height:44px;border-radius:12px;text-align:left;padding:0 16px;cursor:pointer;display:flex;align-items:center;gap:9px"><span style="width:9px;height:9px;border-radius:50%;background:var(--lo)"></span>Low risk</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- history table -->
+    <div class="glass" style="border-radius:20px;overflow:hidden">
+      <div style="display:grid;grid-template-columns:2.6fr 1fr 1fr .9fr .9fr 1fr;gap:12px;padding:16px 24px;border-bottom:1px solid var(--glassbrd);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--mut2)">
+        <span>Filename</span><span>Date</span><span>Risk score</span><span>Level</span><span>Findings</span><span>Status</span>
+      </div>
+      <sc-for list="{{ reviews }}" as="r" hint-placeholder-count="6">
+        <div class="find-row" onClick="{{ r.open }}" style="display:grid;grid-template-columns:2.6fr 1fr 1fr .9fr .9fr 1fr;gap:12px;padding:16px 24px;border-bottom:1px solid var(--glassbrd);align-items:center;cursor:pointer">
+          <span style="display:flex;align-items:center;gap:9px;font-size:13.5px;font-weight:500;min-width:0">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--mut)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ r.file }}</span>
+          </span>
+          <span style="font-size:13px;color:var(--mut)">{{ r.date }}</span>
+          <span style="font:700 14px 'Plus Jakarta Sans'">{{ r.scoreStr }}</span>
+          <span><span style="padding:3px 10px;border-radius:999px;background:{{ r.levelBg }};color:{{ r.levelColor }};font-size:10px;font-weight:700;letter-spacing:.05em">{{ r.level }}</span></span>
+          <span style="font-size:13.5px;color:var(--mut)">{{ r.findings }}</span>
+          <span><span style="display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;background:{{ r.statusBg }};color:{{ r.statusColor }};font-size:10.5px;font-weight:600"><span style="width:6px;height:6px;border-radius:50%;background:{{ r.statusColor }}"></span>{{ r.statusText }}</span></span>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+  </sc-if>
+</div>
+</sc-if>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1180,&quot;height&quot;:840},&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;Vivid — dark gradient&quot;,&quot;options&quot;:[&quot;Vivid — dark gradient&quot;,&quot;Claude — warm light&quot;,&quot;Cool light&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Appearance&quot;},&quot;motion&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;Lively&quot;,&quot;options&quot;:[&quot;Lively&quot;,&quot;Calm&quot;,&quot;Still&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Appearance&quot;},&quot;surface&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;Glass&quot;,&quot;options&quot;:[&quot;Glass&quot;,&quot;Solid&quot;,&quot;Flat&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Appearance&quot;}}">
+class Component extends DCLogic {
+  state = { screen: "login", expanded: "legal-0" };
+
+  RISK = {
+    HIGH:   { color: "#FB4E6D", bg: "rgba(251,78,109,.16)" },
+    MEDIUM: { color: "#FBBF24", bg: "rgba(251,191,36,.16)" },
+    LOW:    { color: "#34D399", bg: "rgba(52,211,153,.16)" },
+  };
+
+  DATA = [
+    { key: "legal", label: "Legal Review", monogram: "L", confidence: 0.91, findings: [
+      { text: "The limitation-of-liability clause caps damages at fees paid in the prior 3 months, well below industry norms for a contract of this value.", risk: "HIGH", confidence: 0.94, page: "Page 7, §8.2", source: "In no event shall total liability exceed the fees paid in the three (3) months preceding the claim.", rec: "Negotiate a cap of at least 12 months' fees, with carve-outs for IP infringement and breach of confidentiality." },
+      { text: "Governing law is specified but the venue for dispute resolution is left blank.", risk: "MEDIUM", confidence: 0.82, page: "Page 9, §11.1", source: "This Agreement shall be governed by the laws of the State of [ ].", rec: "Fill in an exclusive jurisdiction and add a mutual arbitration clause before signature." },
+      { text: "Confidentiality obligations survive termination for a defined 3-year term.", risk: "LOW", confidence: 0.88, page: "Page 8, §9.4", source: "Obligations of confidentiality shall survive for three (3) years following termination.", rec: "Acceptable as drafted; no action required." },
+    ]},
+    { key: "financial", label: "Financial Review", monogram: "F", confidence: 0.87, findings: [
+      { text: "Payment terms are Net-15 while the delivery milestones span four months, creating a working-capital gap.", risk: "MEDIUM", confidence: 0.79, page: "Page 4, §5.1", source: "Invoices are payable within fifteen (15) days of receipt.", rec: "Align invoicing to milestone completion or extend to Net-30 to match the delivery cadence." },
+      { text: "No cap on reimbursable expenses or pre-approval threshold is defined.", risk: "HIGH", confidence: 0.9, page: "Page 5, §5.4", source: "Client shall reimburse all reasonable expenses incurred in performance.", rec: "Introduce a monthly expense ceiling and require written pre-approval above a set threshold." },
+    ]},
+    { key: "technical", label: "Technical Review", monogram: "T", confidence: 0.84, findings: [
+      { text: "Acceptance criteria reference a separate document that is not attached to the SOW.", risk: "MEDIUM", confidence: 0.76, page: "Page 6, §6.2", source: "Deliverables will be accepted per the criteria in Exhibit C.", rec: "Attach Exhibit C or embed the acceptance criteria directly to avoid ambiguity at sign-off." },
+      { text: "Environment and dependency requirements are clearly enumerated with versions.", risk: "LOW", confidence: 0.92, page: "Page 6, §6.5", source: "The vendor shall deliver against Node 20 LTS and PostgreSQL 15.", rec: "Well specified; carry these versions into the acceptance tests." },
+    ]},
+    { key: "risk", label: "Risk Assessment", monogram: "R", confidence: 0.8, findings: [
+      { text: "Force majeure clause omits pandemics and cyber incidents from covered events.", risk: "HIGH", confidence: 0.86, page: "Page 10, §12.3", source: "Neither party shall be liable for delays due to acts of God, war, or natural disaster.", rec: "Broaden the definition to include public-health emergencies and material cyber events." },
+      { text: "Change-control process is defined but lacks a maximum turnaround for approvals.", risk: "MEDIUM", confidence: 0.74, page: "Page 7, §7.1", source: "Change requests shall be reviewed by both parties in a timely manner.", rec: "Set a fixed SLA (e.g. 5 business days) for change-request decisions." },
+    ]},
+    { key: "delivery", label: "Delivery Review", monogram: "D", confidence: 0.89, findings: [
+      { text: "Milestone schedule is detailed and each milestone ties to a specific payment and deliverable.", risk: "LOW", confidence: 0.93, page: "Page 3, §4.2", source: "Milestone 2 (UAT sign-off) is due Week 10 and unlocks 30% of fees.", rec: "Strong structure; ensure resourcing plan supports the Week 10 date." },
+      { text: "No defined process for handling milestone slippage or its effect on downstream dates.", risk: "MEDIUM", confidence: 0.77, page: "Page 3, §4.4", source: "Timelines are estimates and subject to change.", rec: "Add a re-baselining clause specifying how slippage cascades to later milestones." },
+    ]},
+  ];
+
+  agentRisk(f) {
+    if (f.some(x => x.risk === "HIGH")) return "HIGH";
+    if (f.some(x => x.risk === "MEDIUM")) return "MEDIUM";
+    return "LOW";
+  }
+
+  componentWillUnmount() { clearTimeout(this._t); }
+
+  renderVals() {
+    const screen = this.state.screen;
+    const go = (s) => (e) => { if (e && e.preventDefault) e.preventDefault(); this.setState({ screen: s }); };
+
+    // ── expressive appearance controls ──
+    const theme = this.props.theme ?? "Vivid — dark gradient";
+    const motion = this.props.motion ?? "Lively";
+    const surface = this.props.surface ?? "Glass";
+    const PAL = theme.indexOf("Claude") === 0
+      ? { bg: "#F5F1E7", ink: "#2B2A27", mut: "rgba(43,42,39,.62)", mut2: "rgba(43,42,39,.4)", grad: "linear-gradient(120deg,#E8B486 0%,#D9885C 48%,#C1603C 100%)", panel: "255,253,249", dark: false }
+      : theme.indexOf("Cool") === 0
+      ? { bg: "#EEF2FB", ink: "#141C2B", mut: "rgba(20,28,43,.6)", mut2: "rgba(20,28,43,.4)", grad: "linear-gradient(120deg,#60A5FA 0%,#A78BFA 52%,#F0ABFC 100%)", panel: "255,255,255", dark: false }
+      : { bg: "#0a0a11", ink: "#f4f5fb", mut: "rgba(244,245,251,.62)", mut2: "rgba(244,245,251,.4)", grad: "linear-gradient(120deg,#38BDF8 0%,#A855F7 34%,#EC4899 66%,#FB923C 100%)", panel: "20,20,29", dark: true };
+    const surf = surface === "Solid"
+      ? `--glass:rgba(${PAL.panel},${PAL.dark ? ".9" : ".97"});--glassbrd:${PAL.dark ? "rgba(255,255,255,.09)" : "rgba(0,0,0,.09)"};--blur:0px;`
+      : surface === "Flat"
+      ? `--glass:transparent;--glassbrd:${PAL.dark ? "rgba(255,255,255,.16)" : "rgba(0,0,0,.14)"};--blur:0px;`
+      : `--glass:${PAL.dark ? "rgba(255,255,255,.045)" : "rgba(255,255,255,.55)"};--glassbrd:${PAL.dark ? "rgba(255,255,255,.11)" : "rgba(0,0,0,.1)"};--blur:18px;`;
+    const themeVars = `--bg:${PAL.bg};--ink:${PAL.ink};--mut:${PAL.mut};--mut2:${PAL.mut2};--grad:${PAL.grad};` + surf;
+    const motionClass = motion === "Calm" ? "mo-calm" : motion === "Still" ? "mo-still" : "mo-lively";
+    const enter = (e) => {
+      if (e && e.preventDefault) e.preventDefault();
+      this.setState({ screen: "transition" });
+      clearTimeout(this._t);
+      this._t = setTimeout(() => this.setState({ screen: "upload" }), 3400);
+    };
+
+    const svg = (d, extra) => React.createElement("svg", { width: 22, height: 22, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round", strokeLinejoin: "round" }, (Array.isArray(d) ? d : [d]).map((p, i) => React.createElement("path", { key: i, d: p })), extra);
+
+    const features = [
+      { title: "Five specialist agents", desc: "Legal, financial, technical, risk, and delivery reviewers run in parallel — no queue, no hand-offs.", color: "#38BDF8", bg: "rgba(56,189,248,.15)", iconEl: React.createElement("svg", { width: 22, height: 22, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round", strokeLinejoin: "round" }, React.createElement("circle", { cx: 9, cy: 7, r: 3 }), React.createElement("path", { d: "M2 21v-1a5 5 0 0 1 5-5h4a5 5 0 0 1 5 5v1" }), React.createElement("path", { d: "M16 3.5a3 3 0 0 1 0 6M22 21v-1a5 5 0 0 0-3-4.5" })) },
+      { title: "Structured findings", desc: "Every finding carries a risk level, a confidence score, a page reference, and an actionable recommendation.", color: "#EC4899", bg: "rgba(236,72,153,.15)", iconEl: React.createElement("svg", { width: 22, height: 22, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round", strokeLinejoin: "round" }, React.createElement("path", { d: "M9 11l3 3L22 4" }), React.createElement("path", { d: "M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" })) },
+      { title: "A weighted verdict", desc: "One overall risk score, an executive summary, and a downloadable PDF report with the source text annotated.", color: "#FB923C", bg: "rgba(251,146,60,.15)", iconEl: React.createElement("svg", { width: 22, height: 22, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round", strokeLinejoin: "round" }, React.createElement("path", { d: "M3 3v18h18" }), React.createElement("path", { d: "M7 14l4-4 3 3 5-6" })) },
+    ];
+
+    const chips = this.DATA.map((a, i) => ({ label: a.label.replace(" Review", "").replace(" Assessment", ""), color: this.RISK[this.agentRisk(a.findings)].color, delay: (1.1 + i * 0.28).toFixed(2) + "s" }));
+
+    const mock = this.DATA.slice(0, 4).map((a, i) => {
+      const lvl = this.agentRisk(a.findings);
+      return { label: a.label.replace(" Review", "").replace(" Assessment", ""), mono: a.monogram, pct: Math.round(a.confidence * 100), color: this.RISK[lvl].color, bg: this.RISK[lvl].bg, delay: (i * 0.25).toFixed(2) + "s" };
+    });
+
+    const agents = this.DATA.map(a => {
+      const level = this.agentRisk(a.findings);
+      return {
+        key: a.key, label: a.label, monogram: a.monogram,
+        confidencePct: Math.round(a.confidence * 100),
+        riskLevel: level, color: this.RISK[level].color, bg: this.RISK[level].bg,
+        findingCount: a.findings.length,
+        findings: a.findings.map((f, i) => {
+          const k = a.key + "-" + i;
+          const exp = this.state.expanded === k;
+          return {
+            text: f.text, riskLevel: f.risk, color: this.RISK[f.risk].color, bg: this.RISK[f.risk].bg,
+            confidencePct: Math.round(f.confidence * 100),
+            page: f.page, source: f.source, recommendation: f.rec,
+            isExpanded: exp, chevRot: exp ? "90deg" : "0deg",
+            toggle: () => this.setState({ expanded: exp ? null : k }),
+          };
+        }),
+      };
+    });
+
+    const all = this.DATA.flatMap(a => a.findings);
+    const score = 6.8, level = "HIGH";
+
+    // ── dashboard data ──
+    const history = [
+      { file: "AcmeCorp_MSA_StatementOfWork_v3.pdf", date: "Aug 5, 2026", score: 6.8, level: "HIGH", findings: 11, status: "complete" },
+      { file: "Northwind_Consulting_SOW.docx", date: "Aug 4, 2026", score: 4.2, level: "MEDIUM", findings: 8, status: "complete" },
+      { file: "Globex_Platform_Rebuild_SOW.pdf", date: "Aug 2, 2026", score: 7.5, level: "HIGH", findings: 14, status: "complete" },
+      { file: "Initech_Support_Retainer.pdf", date: "Jul 30, 2026", score: 2.3, level: "LOW", findings: 4, status: "complete" },
+      { file: "Umbrella_DataMigration_SOW.docx", date: "Jul 28, 2026", score: 5.1, level: "MEDIUM", findings: 9, status: "complete" },
+      { file: "Stark_Industries_IoT_SOW.pdf", date: "Jul 26, 2026", score: null, level: null, findings: 0, status: "in_progress" },
+    ];
+    const statusStyle = { complete: { c: "#34D399", b: "rgba(52,211,153,.16)", t: "complete" }, in_progress: { c: "#38BDF8", b: "rgba(56,189,248,.16)", t: "in progress" }, error: { c: "#FB4E6D", b: "rgba(251,78,109,.16)", t: "error" } };
+    const done = history.filter(r => r.score != null);
+    const dist = ["HIGH", "MEDIUM", "LOW"].map(l => ({ level: l, count: done.filter(r => r.level === l).length, color: this.RISK[l].color }));
+    const maxDist = Math.max(1, ...dist.map(d => d.count));
+    const reviews = history.map(r => ({
+      file: r.file, date: r.date,
+      scoreStr: r.score != null ? r.score.toFixed(1) : "—",
+      level: r.level, levelColor: r.level ? this.RISK[r.level].color : "var(--mut2)", levelBg: r.level ? this.RISK[r.level].bg : "transparent",
+      findings: r.findings,
+      statusColor: statusStyle[r.status].c, statusBg: statusStyle[r.status].b, statusText: statusStyle[r.status].t,
+      open: go("review"),
+    }));
+    const stats = [
+      { label: "Total reviews", value: String(history.length), color: "#38BDF8" },
+      { label: "Total findings", value: String(history.reduce((s, r) => s + r.findings, 0)), color: "#A855F7" },
+      { label: "Avg risk score", value: (done.reduce((s, r) => s + r.score, 0) / done.length).toFixed(1), color: "#EC4899" },
+      { label: "High risk", value: String(done.filter(r => r.level === "HIGH").length), color: "#FB923C" },
+    ];
+    const bars = dist.map(d => ({ level: d.level, count: d.count, color: d.color, h: Math.round((d.count / maxDist) * 100) + "%" }));
+
+    return {
+      isLogin: screen === "login",
+      isTransition: screen === "transition",
+      isApp: screen === "upload" || screen === "review" || screen === "dashboard",
+      isUpload: screen === "upload",
+      isReview: screen === "review",
+      isDashboard: screen === "dashboard",
+      uploadCurrent: screen === "upload" ? "page" : "false",
+      reviewCurrent: screen === "review" ? "page" : "false",
+      dashboardCurrent: screen === "dashboard" ? "page" : "false",
+      enter, goUpload: go("upload"), goReview: go("review"), goDashboard: go("dashboard"), signOut: go("login"),
+      themeVars, motionClass,
+      chips, mock, features, agents, reviews, stats, bars,
+      filename: "AcmeCorp_MSA_StatementOfWork_v3.pdf",
+      timestamp: "Aug 5, 2026 · 10:32 AM",
+      overallScore: score.toFixed(1), overallLevel: level,
+      summary: "This Statement of Work is broadly workable but carries three high-risk clauses that should be resolved before signature. The liability cap is materially below the contract's value, reimbursable expenses are uncapped, and the force-majeure definition is too narrow for current operating conditions. Financial and delivery structures are otherwise sound, and the technical scope is well specified pending the missing acceptance exhibit.",
+      totalFindings: all.length,
+      highCount: all.filter(f => f.risk === "HIGH").length,
+    };
+  }
+}
+</script>
+</body>
+</html>
