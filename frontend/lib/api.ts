@@ -15,12 +15,12 @@ import {
   UserResponse,
 } from "./types";
 
-// API base URL. Default to "" so browser calls are SAME-ORIGIN relative
-// paths (e.g. /api/v1/upload). next.config.js rewrites /api/* and /health
-// server-side to the in-cluster backend, so the browser never needs to
-// resolve the backend host directly. (NEXT_PUBLIC_* is baked at build time;
-// hardcoding the cluster host here would break browser requests.)
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "";
+// ALWAYS same-origin relative (empty base). The browser calls /api/v1/... on
+// its own origin (Vercel), and next.config.js proxies that server-side to the
+// backend (Render) via BACKEND_INTERNAL_URL. Keeping this empty is what makes
+// the auth cookie first-party to the frontend domain - if this pointed at the
+// backend host directly, calls would be cross-origin and the cookie would break.
+const API_BASE_URL = "";
 
 // Create Axios instance with defaults
 const apiClient: AxiosInstance = axios.create({

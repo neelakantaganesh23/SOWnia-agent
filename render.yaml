@@ -1,0 +1,39 @@
+# Render blueprint for the SOWnia backend (FastAPI).
+# Import this repo as a Blueprint in the Render dashboard; it builds the
+# backend Docker image and runs it as a free web service.
+#
+# The frontend is NOT here - it deploys separately on Vercel (see
+# FREE_STACK_DEPLOYMENT.md). Postgres is external (Neon free tier), passed
+# in via the DATABASE_URL env var below.
+services:
+  - type: web
+    name: sownia-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      # All secrets/URLs below are set in the Render dashboard (sync:false),
+      # never committed. See FREE_STACK_DEPLOYMENT.md for exact values.
+      - key: DATABASE_URL          # Neon connection string (postgresql://...?sslmode=require)
+        sync: false
+      - key: SECRET_KEY            # JWT signing key (openssl rand -hex 32)
+        sync: false
+      - key: GOOGLE_API_KEY        # Gemini API key
+        sync: false
+      - key: HF_TOKEN             # Hugging Face token (if still used)
+        sync: false
+      - key: GOOGLE_CLIENT_ID      # Google OAuth (optional)
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET  # Google OAuth (optional)
+        sync: false
+      - key: GOOGLE_REDIRECT_URI   # https://<vercel-domain>/api/v1/auth/google/callback
+        sync: false
+      - key: FRONTEND_BASE_URL     # https://<vercel-domain>
+        sync: false
+      - key: ALLOWED_ORIGINS       # https://<vercel-domain>
+        sync: false
